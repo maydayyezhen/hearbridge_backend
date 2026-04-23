@@ -6,31 +6,31 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * 手势实体类
+ * 手语资源分类实体。
  */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class GestureItem {
+public class SignCategory {
 
     /**
-     * 手势ID
+     * 主键 ID。
      */
     private Long id;
 
     /**
-     * 所属分类ID
+     * 分类编码，如 greeting/question/time。
      */
-    private Long categoryId;
+    private String code;
 
     /**
-     * 手势中文名
+     * 分类中文名。
      */
-    private String chineseName;
+    private String nameZh;
 
     /**
-     * 模型标签
+     * 分类图片在 MinIO 中的相对路径。
      */
-    private String label;
+    private String coverObjectKey;
 }

@@ -11,6 +11,8 @@ spring:
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.yezhen.hearbridge.backend.entity
+  configuration:
+    map-underscore-to-camel-case: true
 
 logging:
   level:

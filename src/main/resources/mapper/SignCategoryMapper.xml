@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.yezhen.hearbridge.backend.mapper.SignCategoryMapper">
+
+    <select id="selectAll" resultType="com.yezhen.hearbridge.backend.entity.SignCategory">
+        select
+        id,
+        code,
+        name_zh as nameZh,
+        cover_object_key as coverObjectKey
+        from sign_category
+        order by id asc
+    </select>
+
+    <select id="selectByCode" resultType="com.yezhen.hearbridge.backend.entity.SignCategory">
+        select
+        id,
+        code,
+        name_zh as nameZh,
+        cover_object_key as coverObjectKey
+        from sign_category
+        where code = #{code}
+        limit 1
+    </select>
+
+</mapper>

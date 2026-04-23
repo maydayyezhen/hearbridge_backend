@@ -21,6 +21,8 @@
         <java.version>17</java.version>
         <mybatis-spring-boot.version>4.0.0</mybatis-spring-boot.version>
         <lombok.version>1.18.44</lombok.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
     <dependencies>
