@@ -20,7 +20,7 @@ public class SignCategory {
     private Long id;
 
     /**
-     * 分类编码，如 greeting/question/time。
+     * 分类编码。
      */
     private String code;
 
@@ -33,4 +33,9 @@ public class SignCategory {
      * 分类图片在 MinIO 中的相对路径。
      */
     private String coverObjectKey;
+
+    /**
+     * 分类图片完整访问地址。
+     */
+    private String coverUrl;
 }

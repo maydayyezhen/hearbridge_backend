@@ -1,5 +1,6 @@
 package com.yezhen.hearbridge.backend.service;
 
+import com.yezhen.hearbridge.backend.config.MinioProperties;
 import com.yezhen.hearbridge.backend.entity.SignResource;
 import com.yezhen.hearbridge.backend.mapper.SignResourceMapper;
 import org.springframework.stereotype.Service;
@@ -14,9 +15,13 @@ import java.util.List;
 public class SignResourceService {
 
     private final SignResourceMapper signResourceMapper;
+    private final MinioProperties minioProperties;
 
-    public SignResourceService(SignResourceMapper signResourceMapper) {
+    public SignResourceService(
+            SignResourceMapper signResourceMapper,
+            MinioProperties minioProperties) {
         this.signResourceMapper = signResourceMapper;
+        this.minioProperties = minioProperties;
     }
 
     /**
@@ -26,10 +31,14 @@ public class SignResourceService {
      * @return 资源列表
      */
     public List<SignResource> list(String categoryCode) {
+        List<SignResource> resources;
         if (!StringUtils.hasText(categoryCode)) {
-            return signResourceMapper.selectAll();
+            resources = signResourceMapper.selectAll();
+        } else {
+            resources = signResourceMapper.selectByCategoryCode(categoryCode);
         }
-        return signResourceMapper.selectByCategoryCode(categoryCode);
+        resources.forEach(this::fillUrls);
+        return resources;
     }
 
     /**
@@ -39,6 +48,16 @@ public class SignResourceService {
      * @return 资源详情
      */
     public SignResource getByCode(String code) {
-        return signResourceMapper.selectByCode(code);
+        SignResource resource = signResourceMapper.selectByCode(code);
+        fillUrls(resource);
+        return resource;
+    }
+
+    private void fillUrls(SignResource resource) {
+        if (resource == null) {
+            return;
+        }
+        resource.setSigmlUrl(minioProperties.buildObjectUrl(resource.getSigmlObjectKey()));
+        resource.setCoverUrl(minioProperties.buildObjectUrl(resource.getCoverObjectKey()));
     }
 }

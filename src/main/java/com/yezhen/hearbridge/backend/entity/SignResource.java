@@ -20,7 +20,7 @@ public class SignResource {
     private Long id;
 
     /**
-     * 统一编码，建议使用去后缀后的文件名。
+     * 资源编码。
      */
     private String code;
 
@@ -35,7 +35,7 @@ public class SignResource {
     private String categoryCode;
 
     /**
-     * sigml 在 MinIO 中的相对路径。
+     * SigML 在 MinIO 中的相对路径。
      */
     private String sigmlObjectKey;
 
@@ -43,4 +43,14 @@ public class SignResource {
      * 资源图片在 MinIO 中的相对路径。
      */
     private String coverObjectKey;
+
+    /**
+     * SigML 完整访问地址。
+     */
+    private String sigmlUrl;
+
+    /**
+     * 资源图片完整访问地址。
+     */
+    private String coverUrl;
 }

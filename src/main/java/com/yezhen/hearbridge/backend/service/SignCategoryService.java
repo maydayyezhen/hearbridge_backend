@@ -1,5 +1,6 @@
 package com.yezhen.hearbridge.backend.service;
 
+import com.yezhen.hearbridge.backend.config.MinioProperties;
 import com.yezhen.hearbridge.backend.entity.SignCategory;
 import com.yezhen.hearbridge.backend.mapper.SignCategoryMapper;
 import org.springframework.stereotype.Service;
@@ -13,9 +14,13 @@ import java.util.List;
 public class SignCategoryService {
 
     private final SignCategoryMapper signCategoryMapper;
+    private final MinioProperties minioProperties;
 
-    public SignCategoryService(SignCategoryMapper signCategoryMapper) {
+    public SignCategoryService(
+            SignCategoryMapper signCategoryMapper,
+            MinioProperties minioProperties) {
         this.signCategoryMapper = signCategoryMapper;
+        this.minioProperties = minioProperties;
     }
 
     /**
@@ -24,7 +29,9 @@ public class SignCategoryService {
      * @return 分类列表
      */
     public List<SignCategory> listAll() {
-        return signCategoryMapper.selectAll();
+        List<SignCategory> categories = signCategoryMapper.selectAll();
+        categories.forEach(this::fillUrls);
+        return categories;
     }
 
     /**
@@ -34,6 +41,15 @@ public class SignCategoryService {
      * @return 分类信息
      */
     public SignCategory getByCode(String code) {
-        return signCategoryMapper.selectByCode(code);
+        SignCategory category = signCategoryMapper.selectByCode(code);
+        fillUrls(category);
+        return category;
+    }
+
+    private void fillUrls(SignCategory category) {
+        if (category == null) {
+            return;
+        }
+        category.setCoverUrl(minioProperties.buildObjectUrl(category.getCoverObjectKey()));
     }
 }

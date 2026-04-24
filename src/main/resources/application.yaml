@@ -7,6 +7,11 @@ spring:
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 26379
+      database: 1
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
@@ -17,3 +22,14 @@ mybatis:
 logging:
   level:
     com.yezhen.hearbridge.backend.mapper: debug
+
+hearbridge:
+  auth:
+    token-prefix: "hearbridge:app:login:"
+    token-expire-days: 7
+  minio:
+    endpoint: http://127.0.0.1:9000
+    public-endpoint: http://192.168.43.6:9000
+    bucket: cwasa-static
+    access-key: admin
+    secret-key: admin123456
