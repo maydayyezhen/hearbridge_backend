@@ -34,4 +34,16 @@ public interface SignResourceMapper {
      * @return 资源详情
      */
     SignResource selectByCode(@Param("code") String code);
+
+    /**
+     * 统计某个分类编码下的资源数量。
+     *
+     * 用途：
+     * 1. 删除分类前判断是否仍有资源引用。
+     * 2. 修改分类编码前判断是否会造成资源孤儿数据。
+     *
+     * @param categoryCode 分类编码
+     * @return 资源数量
+     */
+    int countByCategoryCode(@Param("categoryCode") String categoryCode);
 }

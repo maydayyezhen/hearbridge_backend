@@ -15,6 +15,17 @@
         order by id asc
     </select>
 
+    <select id="selectById" resultType="com.yezhen.hearbridge.backend.entity.SignCategory">
+        select
+        id,
+        code,
+        name_zh as nameZh,
+        cover_object_key as coverObjectKey
+        from sign_category
+        where id = #{id}
+        limit 1
+    </select>
+
     <select id="selectByCode" resultType="com.yezhen.hearbridge.backend.entity.SignCategory">
         select
         id,
@@ -25,5 +36,35 @@
         where code = #{code}
         limit 1
     </select>
+
+    <insert id="insert"
+            parameterType="com.yezhen.hearbridge.backend.entity.SignCategory"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        insert into sign_category (
+        code,
+        name_zh,
+        cover_object_key
+        )
+        values (
+        #{code},
+        #{nameZh},
+        #{coverObjectKey}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.yezhen.hearbridge.backend.entity.SignCategory">
+        update sign_category
+        set
+        code = #{code},
+        name_zh = #{nameZh},
+        cover_object_key = #{coverObjectKey}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        delete from sign_category
+        where id = #{id}
+    </delete>
 
 </mapper>

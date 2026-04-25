@@ -43,4 +43,10 @@
         limit 1
     </select>
 
+    <select id="countByCategoryCode" resultType="int">
+        select count(1)
+        from sign_resource
+        where category_code = #{categoryCode}
+    </select>
+
 </mapper>
