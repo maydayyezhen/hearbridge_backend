@@ -28,9 +28,7 @@ hearbridge:
     token-prefix: "hearbridge:app:login:"
     token-expire-days: 7
   minio:
-    minio:
-      endpoint: http://localhost:9000
-      bucket: cwasa-static
-      access-key: admin
-      secret-key: admin123456
+    bucket: cwasa-static
+    access-key: admin
+    secret-key: admin123456
 

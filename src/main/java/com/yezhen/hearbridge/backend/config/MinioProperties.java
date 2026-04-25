@@ -6,12 +6,14 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.URI;
 
 /**
  * MinIO 访问配置。
  */
+@Slf4j
 @Getter
 @Setter
 @Component
@@ -72,7 +74,11 @@ public class MinioProperties {
 
         String normalizedEndpoint = resolvePublicEndpoint();
         if (!StringUtils.hasText(normalizedEndpoint)) {
-            return objectKey;
+            throw new IllegalStateException("MinIO endpoint/publicEndpoint 未配置，无法构建对象访问地址");
+        }
+
+        if (!StringUtils.hasText(bucket)) {
+            throw new IllegalStateException("MinIO bucket 未配置，无法构建对象访问地址");
         }
 
         if (normalizedEndpoint.endsWith("/")) {
@@ -104,10 +110,14 @@ public class MinioProperties {
 
         if (StringUtils.hasText(publicEndpoint)) {
             resolvedPublicEndpoint = publicEndpoint;
+            log.info("MinIO public endpoint 使用显式配置：{}", resolvedPublicEndpoint);
             return resolvedPublicEndpoint;
         }
 
         resolvedPublicEndpoint = autoBuildPublicEndpointFromEndpoint(endpoint);
+        log.info("MinIO public endpoint 自动推导结果：endpoint={}, resolvedPublicEndpoint={}",
+                endpoint, resolvedPublicEndpoint);
+
         return resolvedPublicEndpoint;
     }
 
