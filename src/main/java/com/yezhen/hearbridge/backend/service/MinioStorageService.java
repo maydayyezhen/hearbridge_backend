@@ -69,7 +69,7 @@ public class MinioStorageService {
 
     private MinioClient buildClient() {
         return MinioClient.builder()
-                .endpoint(minioProperties.getEndpoint())
+                .endpoint(minioProperties.getInternalEndpoint())
                 .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
                 .build();
     }

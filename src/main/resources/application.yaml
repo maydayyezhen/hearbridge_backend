@@ -27,7 +27,15 @@ hearbridge:
   auth:
     token-prefix: "hearbridge:app:login:"
     token-expire-days: 7
+
   minio:
+    # 后端访问 MinIO 的内部地址。
+    # 本地开发时，Spring Boot 和 MinIO 都在本机，所以这里用 localhost。
+    endpoint: http://localhost:9000
+
+    # 不配置 public-endpoint。
+    # 不配置时，后端会根据 endpoint 自动推导当前 WLAN IP，
+    # 生成给前端 / 手机访问的公开资源地址。
     bucket: cwasa-static
     access-key: admin
     secret-key: admin123456
