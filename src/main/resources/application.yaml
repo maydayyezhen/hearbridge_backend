@@ -1,42 +1,104 @@
+# ============================================================
+# HearBridge Backend 本地开发配置
+# ============================================================
+
+# ------------------------------------------------------------
+# 服务端口配置
+# ------------------------------------------------------------
 server:
   port: 8080
 
+# ------------------------------------------------------------
+# Spring 基础配置
+# ------------------------------------------------------------
 spring:
+  # MySQL 数据源配置
   datasource:
     url: jdbc:mysql://127.0.0.1:3308/hearbridge?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # Redis 配置
   data:
     redis:
       host: 127.0.0.1
       port: 26379
       database: 1
 
+  # 文件上传配置
+  servlet:
+    multipart:
+      # 单个文件最大上传大小
+      max-file-size: 10MB
+
+      # 单次请求最大上传大小
+      max-request-size: 20MB
+
+# ------------------------------------------------------------
+# MyBatis 配置
+# ------------------------------------------------------------
 mybatis:
+  # Mapper XML 文件位置
   mapper-locations: classpath:mapper/*.xml
+
+  # 实体类包路径
   type-aliases-package: com.yezhen.hearbridge.backend.entity
+
   configuration:
+    # 开启下划线转驼峰映射
+    # 例如：cover_object_key -> coverObjectKey
     map-underscore-to-camel-case: true
 
+# ------------------------------------------------------------
+# 日志配置
+# ------------------------------------------------------------
 logging:
   level:
+    # 打印 Mapper SQL 调试日志
     com.yezhen.hearbridge.backend.mapper: debug
 
+# ------------------------------------------------------------
+# HearBridge 自定义配置
+# ------------------------------------------------------------
 hearbridge:
+  # 登录 token 配置
   auth:
+    # Redis 中保存登录 token 的 key 前缀
     token-prefix: "hearbridge:app:login:"
+
+    # token 过期天数
     token-expire-days: 7
 
+  # MinIO 对象存储配置
   minio:
-    # 后端访问 MinIO 的内部地址。
-    # 本地开发时，Spring Boot 和 MinIO 都在本机，所以这里用 localhost。
-    endpoint: http://localhost:9000
+    # 后端访问 MinIO 的内部地址
+    #
+    # 本地开发：
+    # Spring Boot 和 MinIO 都在本机，所以使用 localhost。
+    #
+    # Docker 网络部署时：
+    # 如果 Spring Boot 也在 Docker 容器内，可能需要改成 http://minio:9000。
+    endpoint: http://127.0.0.1:9000
 
-    # 不配置 public-endpoint。
-    # 不配置时，后端会根据 endpoint 自动推导当前 WLAN IP，
-    # 生成给前端 / 手机访问的公开资源地址。
+    # 浏览器 / 手机端访问 MinIO 对象时使用的公开地址
+    #
+    # 本地开发阶段建议不配置 public-endpoint。
+    # 不配置时，MinioProperties 会根据 endpoint 自动推导当前 WLAN IP，
+    # 例如：
+    # endpoint = http://localhost:9000
+    # 自动推导为：
+    # http://10.xxx.xxx.xxx:9000
+    #
+    # 部署到服务器后，再显式配置为公网地址或反向代理地址，例如：
+    # public-endpoint: https://static.hearbridge.example.com
+    # public-endpoint:
+
+    # MinIO 桶名称
     bucket: cwasa-static
-    access-key: admin
-    secret-key: admin123456
 
+    # MinIO 访问密钥
+    access-key: admin
+
+    # MinIO 访问密钥密码
+    secret-key: admin123456

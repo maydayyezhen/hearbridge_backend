@@ -1,7 +1,10 @@
 package com.yezhen.hearbridge.backend.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -10,8 +13,7 @@ import java.util.Map;
 /**
  * 全局异常处理器。
  *
- * 用于把业务异常转换成前端更容易理解的 JSON 响应，
- * 避免所有业务校验失败都变成 500 Internal Server Error。
+ * 用于把业务异常转换成前端更容易理解的 JSON 响应。
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -19,42 +21,91 @@ public class GlobalExceptionHandler {
     /**
      * 处理参数错误、业务校验错误。
      *
-     * 例如：
-     * 1. 分类编码为空
-     * 2. 分类中文名为空
-     * 3. 分类编码已存在
-     *
      * @param exception 参数异常
+     * @param request   当前请求
      * @return 统一错误响应
      */
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, Object> handleIllegalArgumentException(IllegalArgumentException exception) {
-        Map<String, Object> body = new LinkedHashMap<>();
+    public Map<String, Object> handleIllegalArgumentException(
+            IllegalArgumentException exception,
+            HttpServletRequest request) {
+        return buildBody(400, "Bad Request", exception.getMessage(), request.getRequestURI());
+    }
 
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", 400);
-        body.put("error", "Bad Request");
-        body.put("message", exception.getMessage());
+    /**
+     * 处理带 HTTP 状态码的异常。
+     *
+     * 例如：
+     * 1. 上传文件为空；
+     * 2. 上传文件类型不支持；
+     * 3. 上传文件过大；
+     * 4. MinIO 上传失败。
+     *
+     * @param exception 带状态码的异常
+     * @param request   当前请求
+     * @return 统一错误响应
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(
+            ResponseStatusException exception,
+            HttpServletRequest request) {
 
-        return body;
+        exception.printStackTrace();
+
+        int statusCode = exception.getStatusCode().value();
+        String reason = exception.getReason() == null ? "请求处理失败" : exception.getReason();
+
+        String message = reason;
+        if (exception.getCause() != null && exception.getCause().getMessage() != null) {
+            message = reason + "：" + exception.getCause().getMessage();
+        }
+
+        return ResponseEntity
+                .status(exception.getStatusCode())
+                .body(buildBody(statusCode, exception.getStatusCode().toString(), message, request.getRequestURI()));
     }
 
     /**
      * 兜底处理未知异常。
      *
+     * 开发阶段打印异常堆栈，方便排查。
+     * 后续正式部署时，可以把 message 改回“服务器内部错误”。
+     *
      * @param exception 未知异常
+     * @param request   当前请求
      * @return 统一错误响应
      */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public Map<String, Object> handleException(Exception exception) {
+    public Map<String, Object> handleException(Exception exception, HttpServletRequest request) {
+        exception.printStackTrace();
+
+        return buildBody(
+                500,
+                "Internal Server Error",
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * 构造统一错误响应体。
+     *
+     * @param status  HTTP 状态码
+     * @param error   错误类型
+     * @param message 错误信息
+     * @param path    请求路径
+     * @return 错误响应体
+     */
+    private Map<String, Object> buildBody(int status, String error, String message, String path) {
         Map<String, Object> body = new LinkedHashMap<>();
 
         body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", 500);
-        body.put("error", "Internal Server Error");
-        body.put("message", "服务器内部错误");
+        body.put("status", status);
+        body.put("error", error);
+        body.put("message", message);
+        body.put("path", path);
 
         return body;
     }
