@@ -21,7 +21,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 /**
  * 手势样本 Controller 黑盒测试。
  *
@@ -239,4 +240,31 @@ class SignSampleControllerTest {
 
         return sample;
     }
+
+    /**
+     * 测试：POST /sign/samples/sync 从 Python 服务同步 raw 样本。
+     */
+    @Test
+    void syncSamples_shouldReturnSyncResult() throws Exception {
+        SignSampleSyncResult result = new SignSampleSyncResult(
+                10,
+                3,
+                7,
+                0,
+                1
+        );
+
+        Mockito.when(signSampleService.syncFromPythonRawDataset()).thenReturn(result);
+
+        mockMvc.perform(post("/sign/samples/sync"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scannedCount").value(10))
+                .andExpect(jsonPath("$.insertedCount").value(3))
+                .andExpect(jsonPath("$.updatedCount").value(7))
+                .andExpect(jsonPath("$.skippedCount").value(0))
+                .andExpect(jsonPath("$.badCount").value(1));
+
+        Mockito.verify(signSampleService).syncFromPythonRawDataset();
+    }
+
 }

@@ -354,19 +354,11 @@ class SignSampleServiceTest {
      */
     @Test
     void syncFromPythonRawDataset_shouldInsertSamples_whenSamplesNotExist() {
-        PythonRawSampleItem item = new PythonRawSampleItem();
-        item.setSampleCode("a_sample_001");
-        item.setResourceCode("a");
-        item.setLabel("a");
-        item.setRawFilePath("dataset_raw_phone_10fps/a/sample_001.npz");
-        item.setFrameCount(30);
-        item.setDurationMs(2900);
-        item.setFps(new BigDecimal("10.34"));
-        item.setHandPresentRatio(new BigDecimal("1.0000"));
-        item.setPosePresentRatio(new BigDecimal("0.9000"));
-        item.setPoseNormalized(true);
-        item.setQualityStatus("GOOD");
-        item.setQualityMessage("样本质量良好");
+        PythonRawSampleItem item = buildPythonRawSampleItem(
+                "a_sample_001",
+                "a",
+                "GOOD"
+        );
 
         PythonRawSampleListResponse response = new PythonRawSampleListResponse();
         response.setRootDir("dataset_raw_phone_10fps");
@@ -390,4 +382,71 @@ class SignSampleServiceTest {
         verify(signSampleMapper).insert(any(SignSample.class));
         verify(signSampleMapper, never()).updateBySampleCode(any());
     }
+
+    /**
+     * 测试：从 Python 服务同步 raw 样本时，已存在样本应更新数据库。
+     */
+    @Test
+    void syncFromPythonRawDataset_shouldUpdateSamples_whenSamplesExist() {
+        PythonRawSampleItem item = buildPythonRawSampleItem(
+                "a_sample_001",
+                "a",
+                "BAD"
+        );
+
+        PythonRawSampleListResponse response = new PythonRawSampleListResponse();
+        response.setRootDir("dataset_raw_phone_10fps");
+        response.setTotal(1);
+        response.setItems(List.of(item));
+
+        SignSample existed = buildSample(1L, "a_sample_001", "a", "GOOD", false);
+
+        when(pythonGestureServiceClient.listRawSamples()).thenReturn(response);
+        when(signSampleMapper.selectBySampleCode("a_sample_001")).thenReturn(existed);
+        when(signSampleMapper.updateBySampleCode(any(SignSample.class))).thenReturn(1);
+
+        SignSampleSyncResult result = signSampleService.syncFromPythonRawDataset();
+
+        assertEquals(1, result.getScannedCount());
+        assertEquals(0, result.getInsertedCount());
+        assertEquals(1, result.getUpdatedCount());
+        assertEquals(0, result.getSkippedCount());
+        assertEquals(1, result.getBadCount());
+
+        verify(pythonGestureServiceClient).listRawSamples();
+        verify(signSampleMapper).selectBySampleCode("a_sample_001");
+        verify(signSampleMapper).updateBySampleCode(any(SignSample.class));
+        verify(signSampleMapper, never()).insert(any());
+    }
+
+    /**
+     * 构造 Python raw 样本摘要测试对象。
+     *
+     * @param sampleCode    样本编码
+     * @param resourceCode  资源编码
+     * @param qualityStatus 质量状态
+     * @return Python raw 样本摘要
+     */
+    private PythonRawSampleItem buildPythonRawSampleItem(
+            String sampleCode,
+            String resourceCode,
+            String qualityStatus) {
+        PythonRawSampleItem item = new PythonRawSampleItem();
+
+        item.setSampleCode(sampleCode);
+        item.setResourceCode(resourceCode);
+        item.setLabel(resourceCode);
+        item.setRawFilePath("dataset_raw_phone_10fps/" + resourceCode + "/sample_001.npz");
+        item.setFrameCount(30);
+        item.setDurationMs(2900);
+        item.setFps(new BigDecimal("10.34"));
+        item.setHandPresentRatio(new BigDecimal("1.0000"));
+        item.setPosePresentRatio(new BigDecimal("0.9000"));
+        item.setPoseNormalized(true);
+        item.setQualityStatus(qualityStatus);
+        item.setQualityMessage("样本质量测试");
+
+        return item;
+    }
+
 }
