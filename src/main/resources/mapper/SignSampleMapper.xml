@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.yezhen.hearbridge.backend.mapper.SignSampleMapper">
+
+    <sql id="BaseColumnList">
+        id,
+        sample_code as sampleCode,
+        resource_code as resourceCode,
+        label,
+        raw_file_path as rawFilePath,
+        raw_object_key as rawObjectKey,
+        frame_count as frameCount,
+        duration_ms as durationMs,
+        fps,
+        hand_present_ratio as handPresentRatio,
+        pose_present_ratio as posePresentRatio,
+        pose_normalized as poseNormalized,
+        quality_status as qualityStatus,
+        quality_message as qualityMessage,
+        deleted,
+        created_at as createdAt,
+        updated_at as updatedAt
+    </sql>
+
+    <sql id="QueryWhere">
+        <where>
+            <if test="query.resourceCode != null and query.resourceCode != ''">
+                and resource_code = #{query.resourceCode}
+            </if>
+
+            <if test="query.qualityStatus != null and query.qualityStatus != ''">
+                and quality_status = #{query.qualityStatus}
+            </if>
+
+            <if test="query.deleted != null">
+                and deleted = #{query.deleted}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectPage" resultType="com.yezhen.hearbridge.backend.entity.SignSample">
+        select
+        <include refid="BaseColumnList"/>
+        from sign_sample
+        <include refid="QueryWhere"/>
+        order by id desc
+        limit #{offset}, #{pageSize}
+    </select>
+
+    <select id="countPage" resultType="long">
+        select count(1)
+        from sign_sample
+        <include refid="QueryWhere"/>
+    </select>
+
+    <select id="selectById" resultType="com.yezhen.hearbridge.backend.entity.SignSample">
+        select
+        <include refid="BaseColumnList"/>
+        from sign_sample
+        where id = #{id}
+        limit 1
+    </select>
+
+    <select id="selectSummary" resultType="com.yezhen.hearbridge.backend.dto.SignSampleSummary">
+        select
+        count(1) as totalCount,
+        count(distinct resource_code) as resourceCount,
+        coalesce(sum(case when quality_status = 'GOOD' then 1 else 0 end), 0) as goodCount,
+        coalesce(sum(case when quality_status = 'WARNING' then 1 else 0 end), 0) as warningCount,
+        coalesce(sum(case when quality_status = 'BAD' then 1 else 0 end), 0) as badCount,
+        coalesce(sum(case when quality_status = 'UNKNOWN' then 1 else 0 end), 0) as unknownCount
+        from sign_sample
+        where deleted = 0
+    </select>
+
+    <update id="updateQuality">
+        update sign_sample
+        set
+        quality_status = #{qualityStatus},
+        quality_message = #{qualityMessage}
+        where id = #{id}
+    </update>
+
+    <update id="softDeleteById">
+        update sign_sample
+        set deleted = 1
+        where id = #{id}
+    </update>
+
+</mapper>

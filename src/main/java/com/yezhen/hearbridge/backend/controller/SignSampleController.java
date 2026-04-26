@@ -1,0 +1,76 @@
+package com.yezhen.hearbridge.backend.controller;
+
+import com.yezhen.hearbridge.backend.dto.SignSamplePageResult;
+import com.yezhen.hearbridge.backend.dto.SignSampleQualityUpdateRequest;
+import com.yezhen.hearbridge.backend.dto.SignSampleQuery;
+import com.yezhen.hearbridge.backend.dto.SignSampleSummary;
+import com.yezhen.hearbridge.backend.entity.SignSample;
+import com.yezhen.hearbridge.backend.service.SignSampleService;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 手势样本管理 Controller。
+ */
+@RestController
+@RequestMapping("/sign/samples")
+public class SignSampleController {
+
+    /**
+     * 手势样本 Service。
+     */
+    private final SignSampleService signSampleService;
+
+    /**
+     * 构造注入手势样本 Service。
+     *
+     * @param signSampleService 手势样本 Service
+     */
+    public SignSampleController(SignSampleService signSampleService) {
+        this.signSampleService = signSampleService;
+    }
+
+    /**
+     * 分页查询样本列表。
+     *
+     * @param query 查询参数
+     * @return 分页样本列表
+     */
+    @GetMapping
+    public SignSamplePageResult listSamples(SignSampleQuery query) {
+        return signSampleService.list(query);
+    }
+
+    /**
+     * 查询样本统计信息。
+     *
+     * @return 样本统计信息
+     */
+    @GetMapping("/summary")
+    public SignSampleSummary getSummary() {
+        return signSampleService.summary();
+    }
+
+    /**
+     * 软删除样本。
+     *
+     * @param id 样本 ID
+     */
+    @DeleteMapping("/{id}")
+    public void deleteSample(@PathVariable("id") Long id) {
+        signSampleService.deleteById(id);
+    }
+
+    /**
+     * 更新样本质量状态。
+     *
+     * @param id      样本 ID
+     * @param request 质量更新请求
+     * @return 更新后的样本信息
+     */
+    @PutMapping("/{id}/quality")
+    public SignSample updateQuality(
+            @PathVariable("id") Long id,
+            @RequestBody SignSampleQualityUpdateRequest request) {
+        return signSampleService.updateQuality(id, request);
+    }
+}
