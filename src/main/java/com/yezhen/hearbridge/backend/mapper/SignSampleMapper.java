@@ -72,4 +72,28 @@ public interface SignSampleMapper {
      * @return 影响行数
      */
     int softDeleteById(@Param("id") Long id);
+
+    /**
+     * 根据样本编码查询样本。
+     *
+     * @param sampleCode 样本编码
+     * @return 样本信息
+     */
+    SignSample selectBySampleCode(@Param("sampleCode") String sampleCode);
+
+    /**
+     * 新增样本元数据。
+     *
+     * @param sample 样本信息
+     * @return 影响行数
+     */
+    int insert(SignSample sample);
+
+    /**
+     * 根据样本编码更新样本元数据。
+     *
+     * @param sample 样本信息
+     * @return 影响行数
+     */
+    int updateBySampleCode(SignSample sample);
 }

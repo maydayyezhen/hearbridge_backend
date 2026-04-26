@@ -64,6 +64,14 @@
         limit 1
     </select>
 
+    <select id="selectBySampleCode" resultType="com.yezhen.hearbridge.backend.entity.SignSample">
+        select
+        <include refid="BaseColumnList"/>
+        from sign_sample
+        where sample_code = #{sampleCode}
+        limit 1
+    </select>
+
     <select id="selectSummary" resultType="com.yezhen.hearbridge.backend.dto.SignSampleSummary">
         select
         count(1) as totalCount,
@@ -75,6 +83,63 @@
         from sign_sample
         where deleted = 0
     </select>
+
+    <insert id="insert"
+            parameterType="com.yezhen.hearbridge.backend.entity.SignSample"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        insert into sign_sample (
+        sample_code,
+        resource_code,
+        label,
+        raw_file_path,
+        raw_object_key,
+        frame_count,
+        duration_ms,
+        fps,
+        hand_present_ratio,
+        pose_present_ratio,
+        pose_normalized,
+        quality_status,
+        quality_message,
+        deleted
+        )
+        values (
+        #{sampleCode},
+        #{resourceCode},
+        #{label},
+        #{rawFilePath},
+        #{rawObjectKey},
+        #{frameCount},
+        #{durationMs},
+        #{fps},
+        #{handPresentRatio},
+        #{posePresentRatio},
+        #{poseNormalized},
+        #{qualityStatus},
+        #{qualityMessage},
+        #{deleted}
+        )
+    </insert>
+
+    <update id="updateBySampleCode" parameterType="com.yezhen.hearbridge.backend.entity.SignSample">
+        update sign_sample
+        set
+        resource_code = #{resourceCode},
+        label = #{label},
+        raw_file_path = #{rawFilePath},
+        raw_object_key = #{rawObjectKey},
+        frame_count = #{frameCount},
+        duration_ms = #{durationMs},
+        fps = #{fps},
+        hand_present_ratio = #{handPresentRatio},
+        pose_present_ratio = #{posePresentRatio},
+        pose_normalized = #{poseNormalized},
+        quality_status = #{qualityStatus},
+        quality_message = #{qualityMessage},
+        deleted = #{deleted}
+        where sample_code = #{sampleCode}
+    </update>
 
     <update id="updateQuality">
         update sign_sample

@@ -8,6 +8,9 @@ import com.yezhen.hearbridge.backend.entity.SignSample;
 import com.yezhen.hearbridge.backend.mapper.SignSampleMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import com.yezhen.hearbridge.backend.dto.PythonRawSampleItem;
+import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
+import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 
 import java.util.Set;
 
@@ -54,12 +57,20 @@ public class SignSampleService {
     private final SignSampleMapper signSampleMapper;
 
     /**
+     * Python 手势识别服务客户端。
+     */
+    private final PythonGestureServiceClient pythonGestureServiceClient;
+
+    /**
      * 构造注入手势样本 Mapper。
      *
      * @param signSampleMapper 手势样本 Mapper
      */
-    public SignSampleService(SignSampleMapper signSampleMapper) {
+    public SignSampleService(
+            SignSampleMapper signSampleMapper,
+            PythonGestureServiceClient pythonGestureServiceClient) {
         this.signSampleMapper = signSampleMapper;
+        this.pythonGestureServiceClient = pythonGestureServiceClient;
     }
 
     /**
@@ -203,5 +214,84 @@ public class SignSampleService {
         if (!ALLOWED_QUALITY_STATUS.contains(qualityStatus)) {
             throw new IllegalArgumentException("不支持的质量状态：" + qualityStatus);
         }
+    }
+
+    /**
+     * 从 Python 服务同步 raw 样本摘要到 MySQL。
+     *
+     * @return 同步结果
+     */
+    public SignSampleSyncResult syncFromPythonRawDataset() {
+        PythonRawSampleListResponse response = pythonGestureServiceClient.listRawSamples();
+
+        if (response == null || response.getItems() == null) {
+            return new SignSampleSyncResult(0, 0, 0, 0, 0);
+        }
+
+        int insertedCount = 0;
+        int updatedCount = 0;
+        int skippedCount = 0;
+        int badCount = 0;
+
+        for (PythonRawSampleItem item : response.getItems()) {
+            if (item == null || !StringUtils.hasText(item.getSampleCode())) {
+                skippedCount++;
+                continue;
+            }
+
+            SignSample sample = convertPythonItemToSample(item);
+
+            if ("BAD".equals(sample.getQualityStatus())) {
+                badCount++;
+            }
+
+            SignSample existed = signSampleMapper.selectBySampleCode(sample.getSampleCode());
+            if (existed == null) {
+                signSampleMapper.insert(sample);
+                insertedCount++;
+            } else {
+                signSampleMapper.updateBySampleCode(sample);
+                updatedCount++;
+            }
+        }
+
+        return new SignSampleSyncResult(
+                response.getItems().size(),
+                insertedCount,
+                updatedCount,
+                skippedCount,
+                badCount
+        );
+    }
+
+    /**
+     * 将 Python 样本摘要转换为数据库实体。
+     *
+     * @param item Python 样本摘要
+     * @return SignSample 实体
+     */
+    private SignSample convertPythonItemToSample(PythonRawSampleItem item) {
+        SignSample sample = new SignSample();
+
+        sample.setSampleCode(item.getSampleCode());
+        sample.setResourceCode(item.getResourceCode());
+        sample.setLabel(item.getLabel());
+        sample.setRawFilePath(item.getRawFilePath());
+        sample.setRawObjectKey(null);
+        sample.setFrameCount(item.getFrameCount());
+        sample.setDurationMs(item.getDurationMs());
+        sample.setFps(item.getFps());
+        sample.setHandPresentRatio(item.getHandPresentRatio());
+        sample.setPosePresentRatio(item.getPosePresentRatio());
+        sample.setPoseNormalized(item.getPoseNormalized());
+        sample.setQualityStatus(
+                StringUtils.hasText(item.getQualityStatus())
+                        ? item.getQualityStatus()
+                        : "UNKNOWN"
+        );
+        sample.setQualityMessage(item.getQualityMessage());
+        sample.setDeleted(false);
+
+        return sample;
     }
 }

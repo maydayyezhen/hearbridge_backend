@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.yezhen.hearbridge.backend.dto.PythonRawSampleItem;
+import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
+import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -38,6 +41,12 @@ class SignSampleServiceTest {
     private SignSampleMapper signSampleMapper;
 
     /**
+     * Python 手势识别服务客户端 Mock。
+     */
+    @Mock
+    private PythonGestureServiceClient pythonGestureServiceClient;
+
+    /**
      * 被测试的手势样本 Service。
      */
     private SignSampleService signSampleService;
@@ -47,7 +56,10 @@ class SignSampleServiceTest {
      */
     @BeforeEach
     void setUp() {
-        signSampleService = new SignSampleService(signSampleMapper);
+        signSampleService = new SignSampleService(
+                signSampleMapper,
+                pythonGestureServiceClient
+        );
     }
 
     /**
@@ -335,5 +347,47 @@ class SignSampleServiceTest {
         sample.setDeleted(deleted);
 
         return sample;
+    }
+
+    /**
+     * 测试：从 Python 服务同步 raw 样本时，新样本应插入数据库。
+     */
+    @Test
+    void syncFromPythonRawDataset_shouldInsertSamples_whenSamplesNotExist() {
+        PythonRawSampleItem item = new PythonRawSampleItem();
+        item.setSampleCode("a_sample_001");
+        item.setResourceCode("a");
+        item.setLabel("a");
+        item.setRawFilePath("dataset_raw_phone_10fps/a/sample_001.npz");
+        item.setFrameCount(30);
+        item.setDurationMs(2900);
+        item.setFps(new BigDecimal("10.34"));
+        item.setHandPresentRatio(new BigDecimal("1.0000"));
+        item.setPosePresentRatio(new BigDecimal("0.9000"));
+        item.setPoseNormalized(true);
+        item.setQualityStatus("GOOD");
+        item.setQualityMessage("样本质量良好");
+
+        PythonRawSampleListResponse response = new PythonRawSampleListResponse();
+        response.setRootDir("dataset_raw_phone_10fps");
+        response.setTotal(1);
+        response.setItems(List.of(item));
+
+        when(pythonGestureServiceClient.listRawSamples()).thenReturn(response);
+        when(signSampleMapper.selectBySampleCode("a_sample_001")).thenReturn(null);
+        when(signSampleMapper.insert(any(SignSample.class))).thenReturn(1);
+
+        SignSampleSyncResult result = signSampleService.syncFromPythonRawDataset();
+
+        assertEquals(1, result.getScannedCount());
+        assertEquals(1, result.getInsertedCount());
+        assertEquals(0, result.getUpdatedCount());
+        assertEquals(0, result.getSkippedCount());
+        assertEquals(0, result.getBadCount());
+
+        verify(pythonGestureServiceClient).listRawSamples();
+        verify(signSampleMapper).selectBySampleCode("a_sample_001");
+        verify(signSampleMapper).insert(any(SignSample.class));
+        verify(signSampleMapper, never()).updateBySampleCode(any());
     }
 }

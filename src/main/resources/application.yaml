@@ -62,43 +62,15 @@ logging:
 # HearBridge 自定义配置
 # ------------------------------------------------------------
 hearbridge:
-  # 登录 token 配置
   auth:
-    # Redis 中保存登录 token 的 key 前缀
     token-prefix: "hearbridge:app:login:"
-
-    # token 过期天数
     token-expire-days: 7
 
-  # MinIO 对象存储配置
   minio:
-    # 后端访问 MinIO 的内部地址
-    #
-    # 本地开发：
-    # Spring Boot 和 MinIO 都在本机，所以使用 localhost。
-    #
-    # Docker 网络部署时：
-    # 如果 Spring Boot 也在 Docker 容器内，可能需要改成 http://minio:9000。
     endpoint: http://127.0.0.1:9000
-
-    # 浏览器 / 手机端访问 MinIO 对象时使用的公开地址
-    #
-    # 本地开发阶段建议不配置 public-endpoint。
-    # 不配置时，MinioProperties 会根据 endpoint 自动推导当前 WLAN IP，
-    # 例如：
-    # endpoint = http://localhost:9000
-    # 自动推导为：
-    # http://10.xxx.xxx.xxx:9000
-    #
-    # 部署到服务器后，再显式配置为公网地址或反向代理地址，例如：
-    # public-endpoint: https://static.hearbridge.example.com
-    # public-endpoint:
-
-    # MinIO 桶名称
     bucket: cwasa-static
-
-    # MinIO 访问密钥
     access-key: admin
-
-    # MinIO 访问密钥密码
     secret-key: admin123456
+
+  python:
+    gesture-service-base-url: http://127.0.0.1:8000

@@ -7,6 +7,7 @@ import com.yezhen.hearbridge.backend.dto.SignSampleSummary;
 import com.yezhen.hearbridge.backend.entity.SignSample;
 import com.yezhen.hearbridge.backend.service.SignSampleService;
 import org.springframework.web.bind.annotation.*;
+import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 
 /**
  * 手势样本管理 Controller。
@@ -48,6 +49,16 @@ public class SignSampleController {
     @GetMapping("/summary")
     public SignSampleSummary getSummary() {
         return signSampleService.summary();
+    }
+
+    /**
+     * 从 Python 服务同步 raw 样本摘要。
+     *
+     * @return 同步结果
+     */
+    @PostMapping("/sync")
+    public SignSampleSyncResult syncSamples() {
+        return signSampleService.syncFromPythonRawDataset();
     }
 
     /**
