@@ -66,6 +66,12 @@ hearbridge:
     token-prefix: "hearbridge:app:login:"
     token-expire-days: 7
 
+    # 管理端登录 token Redis 前缀。
+    admin-token-prefix: "hearbridge:admin:login:"
+
+    # 管理端登录 token 过期天数。
+    admin-token-expire-days: 7
+
   minio:
     endpoint: http://127.0.0.1:9000
     bucket: cwasa-static
