@@ -16,6 +16,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import com.yezhen.hearbridge.backend.dto.ModelReloadResult;
 
 /**
  * 模型版本 Service 白盒测试。
@@ -30,6 +31,12 @@ class SignModelVersionServiceTest {
     private SignModelVersionMapper signModelVersionMapper;
 
     /**
+     * Python 手势识别服务客户端 Mock。
+     */
+    @Mock
+    private PythonGestureServiceClient pythonGestureServiceClient;
+
+    /**
      * 被测试的模型版本 Service。
      */
     private SignModelVersionService signModelVersionService;
@@ -41,7 +48,8 @@ class SignModelVersionServiceTest {
     void setUp() {
         signModelVersionService = new SignModelVersionService(
                 signModelVersionMapper,
-                new ObjectMapper()
+                new ObjectMapper(),
+                pythonGestureServiceClient
         );
     }
 
@@ -97,11 +105,24 @@ class SignModelVersionServiceTest {
      * 测试：发布模型版本成功。
      */
     @Test
-    void publish_shouldClearOldPublishedAndPublishTargetVersion() {
+    void publish_shouldReloadPythonModelAndPublishTargetVersion() {
         SignModelVersion oldVersion = buildVersion(1L, false, "TRAINED");
         SignModelVersion publishedVersion = buildVersion(1L, true, "PUBLISHED");
 
+        ModelReloadResult reloadResult = new ModelReloadResult();
+        reloadResult.setOk(true);
+        reloadResult.setVersionName("train_20260426_153000");
+        reloadResult.setModelPath(oldVersion.getModelPath());
+        reloadResult.setLabelMapPath(oldVersion.getLabelMapPath());
+        reloadResult.setClassCount(10);
+        reloadResult.setMessage("model reloaded");
+
         when(signModelVersionMapper.selectById(1L)).thenReturn(oldVersion, publishedVersion);
+        when(pythonGestureServiceClient.reloadModel(
+                oldVersion.getModelPath(),
+                oldVersion.getLabelMapPath(),
+                oldVersion.getVersionName()
+        )).thenReturn(reloadResult);
         when(signModelVersionMapper.clearPublished()).thenReturn(1);
         when(signModelVersionMapper.publishById(1L)).thenReturn(1);
 
@@ -112,8 +133,48 @@ class SignModelVersionServiceTest {
         assertTrue(result.getPublished());
 
         verify(signModelVersionMapper, times(2)).selectById(1L);
+        verify(pythonGestureServiceClient).reloadModel(
+                oldVersion.getModelPath(),
+                oldVersion.getLabelMapPath(),
+                oldVersion.getVersionName()
+        );
         verify(signModelVersionMapper).clearPublished();
         verify(signModelVersionMapper).publishById(1L);
+    }
+
+    /**
+     * 测试：Python 服务重载失败时，不应更新数据库发布状态。
+     */
+    @Test
+    void publish_shouldThrowExceptionAndNotPublish_whenPythonReloadFailed() {
+        SignModelVersion version = buildVersion(1L, false, "TRAINED");
+
+        ModelReloadResult reloadResult = new ModelReloadResult();
+        reloadResult.setOk(false);
+        reloadResult.setMessage("model reload failed");
+
+        when(signModelVersionMapper.selectById(1L)).thenReturn(version);
+        when(pythonGestureServiceClient.reloadModel(
+                version.getModelPath(),
+                version.getLabelMapPath(),
+                version.getVersionName()
+        )).thenReturn(reloadResult);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> signModelVersionService.publish(1L)
+        );
+
+        assertEquals("Python 服务重载模型失败", exception.getMessage());
+
+        verify(signModelVersionMapper).selectById(1L);
+        verify(pythonGestureServiceClient).reloadModel(
+                version.getModelPath(),
+                version.getLabelMapPath(),
+                version.getVersionName()
+        );
+        verify(signModelVersionMapper, never()).clearPublished();
+        verify(signModelVersionMapper, never()).publishById(anyLong());
     }
 
     /**

@@ -7,6 +7,7 @@ import com.yezhen.hearbridge.backend.entity.SignModelVersion;
 import com.yezhen.hearbridge.backend.mapper.SignModelVersionMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import com.yezhen.hearbridge.backend.dto.ModelReloadResult;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,6 +45,11 @@ public class SignModelVersionService {
     private final ObjectMapper objectMapper;
 
     /**
+     * Python 手势识别服务客户端。
+     */
+    private final PythonGestureServiceClient pythonGestureServiceClient;
+
+    /**
      * 构造注入依赖。
      *
      * @param signModelVersionMapper 模型版本 Mapper
@@ -51,9 +57,11 @@ public class SignModelVersionService {
      */
     public SignModelVersionService(
             SignModelVersionMapper signModelVersionMapper,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            PythonGestureServiceClient pythonGestureServiceClient) {
         this.signModelVersionMapper = signModelVersionMapper;
         this.objectMapper = objectMapper;
+        this.pythonGestureServiceClient = pythonGestureServiceClient;
     }
 
     /**
@@ -123,7 +131,10 @@ public class SignModelVersionService {
     /**
      * 发布指定模型版本。
      *
-     * 第一版只更新数据库状态，不做 Python 热加载。
+     * 第一版发布策略：
+     * 1. 先调用 Python 服务重载模型；
+     * 2. Python 重载成功后，再更新数据库发布状态；
+     * 3. 避免出现数据库显示已发布、但 Python 实际未加载的状态。
      *
      * @param id 模型版本 ID
      * @return 发布后的模型版本
@@ -136,6 +147,16 @@ public class SignModelVersionService {
         SignModelVersion version = signModelVersionMapper.selectById(id);
         if (version == null) {
             throw new IllegalArgumentException("模型版本不存在，ID：" + id);
+        }
+
+        ModelReloadResult reloadResult = pythonGestureServiceClient.reloadModel(
+                version.getModelPath(),
+                version.getLabelMapPath(),
+                version.getVersionName()
+        );
+
+        if (reloadResult == null || !Boolean.TRUE.equals(reloadResult.getOk())) {
+            throw new IllegalArgumentException("Python 服务重载模型失败");
         }
 
         signModelVersionMapper.clearPublished();

@@ -7,6 +7,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
 import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
+import com.yezhen.hearbridge.backend.dto.ModelReloadRequest;
+import com.yezhen.hearbridge.backend.dto.ModelReloadResult;
 
 /**
  * Python 手势识别服务客户端。
@@ -102,6 +104,41 @@ public class PythonGestureServiceClient {
                 .uri(normalizedBaseUrl + "/model/train")
                 .retrieve()
                 .body(ModelTrainResult.class);
+    }
+
+    /**
+     * 调用 Python 服务重载实时识别模型。
+     *
+     * @param modelPath    模型文件路径
+     * @param labelMapPath 标签映射文件路径
+     * @param versionName  模型版本名称
+     * @return 重载结果
+     */
+    public ModelReloadResult reloadModel(
+            String modelPath,
+            String labelMapPath,
+            String versionName) {
+        String baseUrl = pythonServiceProperties.getGestureServiceBaseUrl();
+
+        if (!StringUtils.hasText(baseUrl)) {
+            throw new IllegalStateException("Python 手势识别服务地址未配置");
+        }
+
+        String normalizedBaseUrl = baseUrl.endsWith("/")
+                ? baseUrl.substring(0, baseUrl.length() - 1)
+                : baseUrl;
+
+        ModelReloadRequest request = new ModelReloadRequest(
+                modelPath,
+                labelMapPath,
+                versionName
+        );
+
+        return restClient.post()
+                .uri(normalizedBaseUrl + "/model/reload")
+                .body(request)
+                .retrieve()
+                .body(ModelReloadResult.class);
     }
 
 }
