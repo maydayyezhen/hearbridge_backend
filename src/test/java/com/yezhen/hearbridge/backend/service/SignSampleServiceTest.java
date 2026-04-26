@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.yezhen.hearbridge.backend.dto.PythonRawSampleItem;
 import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
+import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -447,6 +448,49 @@ class SignSampleServiceTest {
         item.setQualityMessage("样本质量测试");
 
         return item;
+    }
+
+    /**
+     * 测试：调用 Python 服务执行 raw → feature 转换成功。
+     */
+    @Test
+    void convertRawToFeatures_shouldReturnResult_whenPythonServiceReturnsResult() {
+        FeatureConvertResult result = new FeatureConvertResult();
+        result.setRawRoot("dataset_raw_phone_10fps");
+        result.setFeatureRoot("data_processed_arm_pose_10fps");
+        result.setScannedCount(10);
+        result.setConvertedCount(10);
+        result.setSkippedCount(0);
+        result.setFailedCount(0);
+        result.setMessage("raw → feature 转换完成");
+
+        when(pythonGestureServiceClient.convertRawToFeatures()).thenReturn(result);
+
+        FeatureConvertResult actual = signSampleService.convertRawToFeatures();
+
+        assertEquals(10, actual.getScannedCount());
+        assertEquals(10, actual.getConvertedCount());
+        assertEquals(0, actual.getFailedCount());
+        assertEquals("raw → feature 转换完成", actual.getMessage());
+
+        verify(pythonGestureServiceClient).convertRawToFeatures();
+    }
+
+    /**
+     * 测试：Python 服务未返回转换结果时，应抛出异常。
+     */
+    @Test
+    void convertRawToFeatures_shouldThrowException_whenPythonServiceReturnsNull() {
+        when(pythonGestureServiceClient.convertRawToFeatures()).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> signSampleService.convertRawToFeatures()
+        );
+
+        assertEquals("raw → feature 转换失败：Python 服务未返回结果", exception.getMessage());
+
+        verify(pythonGestureServiceClient).convertRawToFeatures();
     }
 
 }

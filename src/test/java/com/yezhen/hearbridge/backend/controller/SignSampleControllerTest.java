@@ -23,6 +23,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
+
 /**
  * 手势样本 Controller 黑盒测试。
  *
@@ -265,6 +267,35 @@ class SignSampleControllerTest {
                 .andExpect(jsonPath("$.badCount").value(1));
 
         Mockito.verify(signSampleService).syncFromPythonRawDataset();
+    }/**
+     * 测试：POST /sign/samples/convert-features 执行 raw → feature 转换。
+     */
+    @Test
+    void convertRawToFeatures_shouldReturnConvertResult() throws Exception {
+        FeatureConvertResult result = new FeatureConvertResult();
+        result.setRawRoot("dataset_raw_phone_10fps");
+        result.setFeatureRoot("data_processed_arm_pose_10fps");
+        result.setScannedCount(10);
+        result.setConvertedCount(10);
+        result.setSkippedCount(0);
+        result.setFailedCount(0);
+        result.setMessage("raw → feature 转换完成");
+
+        Mockito.when(signSampleService.convertRawToFeatures()).thenReturn(result);
+
+        mockMvc.perform(post("/sign/samples/convert-features"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rawRoot").value("dataset_raw_phone_10fps"))
+                .andExpect(jsonPath("$.featureRoot").value("data_processed_arm_pose_10fps"))
+                .andExpect(jsonPath("$.scannedCount").value(10))
+                .andExpect(jsonPath("$.convertedCount").value(10))
+                .andExpect(jsonPath("$.skippedCount").value(0))
+                .andExpect(jsonPath("$.failedCount").value(0))
+                .andExpect(jsonPath("$.message").value("raw → feature 转换完成"));
+
+        Mockito.verify(signSampleService).convertRawToFeatures();
     }
+
+
 
 }

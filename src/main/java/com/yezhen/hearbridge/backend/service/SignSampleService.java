@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 import com.yezhen.hearbridge.backend.dto.PythonRawSampleItem;
 import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
+import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
 
 import java.util.Set;
 
@@ -294,4 +295,19 @@ public class SignSampleService {
 
         return sample;
     }
+    /**
+     * 调用 Python 服务执行 raw → feature 转换。
+     *
+     * @return 转换结果
+     */
+    public FeatureConvertResult convertRawToFeatures() {
+        FeatureConvertResult result = pythonGestureServiceClient.convertRawToFeatures();
+
+        if (result == null) {
+            throw new IllegalArgumentException("raw → feature 转换失败：Python 服务未返回结果");
+        }
+
+        return result;
+    }
+
 }

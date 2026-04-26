@@ -8,6 +8,7 @@ import com.yezhen.hearbridge.backend.entity.SignSample;
 import com.yezhen.hearbridge.backend.service.SignSampleService;
 import org.springframework.web.bind.annotation.*;
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
+import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
 
 /**
  * 手势样本管理 Controller。
@@ -83,5 +84,15 @@ public class SignSampleController {
             @PathVariable("id") Long id,
             @RequestBody SignSampleQualityUpdateRequest request) {
         return signSampleService.updateQuality(id, request);
+    }
+
+    /**
+     * 调用 Python 服务执行 raw → feature 转换。
+     *
+     * @return 转换结果
+     */
+    @PostMapping("/convert-features")
+    public FeatureConvertResult convertRawToFeatures() {
+        return signSampleService.convertRawToFeatures();
     }
 }

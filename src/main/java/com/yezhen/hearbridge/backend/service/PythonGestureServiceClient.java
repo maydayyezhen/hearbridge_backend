@@ -5,6 +5,7 @@ import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
 
 /**
  * Python 手势识别服务客户端。
@@ -57,4 +58,27 @@ public class PythonGestureServiceClient {
                 .retrieve()
                 .body(PythonRawSampleListResponse.class);
     }
+
+    /**
+     * 调用 Python 服务执行 raw → feature 转换。
+     *
+     * @return 转换结果
+     */
+    public FeatureConvertResult convertRawToFeatures() {
+        String baseUrl = pythonServiceProperties.getGestureServiceBaseUrl();
+
+        if (!StringUtils.hasText(baseUrl)) {
+            throw new IllegalStateException("Python 手势识别服务地址未配置");
+        }
+
+        String normalizedBaseUrl = baseUrl.endsWith("/")
+                ? baseUrl.substring(0, baseUrl.length() - 1)
+                : baseUrl;
+
+        return restClient.post()
+                .uri(normalizedBaseUrl + "/dataset/raw/convert-to-features")
+                .retrieve()
+                .body(FeatureConvertResult.class);
+    }
+
 }
