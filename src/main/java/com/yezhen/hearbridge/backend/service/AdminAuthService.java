@@ -10,6 +10,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import com.yezhen.hearbridge.backend.context.AdminAuthContext;
+import com.yezhen.hearbridge.backend.dto.AdminChangePasswordRequest;
+import com.yezhen.hearbridge.backend.dto.AdminUserInfo;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -213,4 +216,62 @@ public class AdminAuthService {
                 adminUser.getNickname()
         );
     }
+
+    /**
+     * 修改当前管理员密码。
+     *
+     * 修改成功后删除当前 token，要求前端重新登录。
+     *
+     * @param request 修改密码请求
+     * @param token   当前登录 token
+     */
+    public void changePassword(AdminChangePasswordRequest request, String token) {
+        if (request == null) {
+            throw new IllegalArgumentException("修改密码请求不能为空");
+        }
+
+        if (!StringUtils.hasText(request.getOldPassword())) {
+            throw new IllegalArgumentException("原密码不能为空");
+        }
+
+        if (!StringUtils.hasText(request.getNewPassword())) {
+            throw new IllegalArgumentException("新密码不能为空");
+        }
+
+        if (request.getNewPassword().length() < 6) {
+            throw new IllegalArgumentException("新密码长度不能少于 6 位");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("两次输入的新密码不一致");
+        }
+
+        AdminUserInfo currentUser = AdminAuthContext.getCurrentUser();
+        if (currentUser == null || currentUser.getId() == null) {
+            throw new IllegalArgumentException("管理员未登录");
+        }
+
+        AdminUser adminUser = adminUserMapper.selectById(currentUser.getId());
+        if (adminUser == null) {
+            throw new IllegalArgumentException("管理员不存在");
+        }
+
+        if (!STATUS_ENABLED.equals(adminUser.getStatus())) {
+            throw new IllegalArgumentException("管理员账号已禁用");
+        }
+
+        if (!passwordEncoder.matches(request.getOldPassword(), adminUser.getPasswordHash())) {
+            throw new IllegalArgumentException("原密码错误");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), adminUser.getPasswordHash())) {
+            throw new IllegalArgumentException("新密码不能与原密码相同");
+        }
+
+        String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
+        adminUserMapper.updatePassword(adminUser.getId(), newPasswordHash);
+
+        logout(token);
+    }
+
 }

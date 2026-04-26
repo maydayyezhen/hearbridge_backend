@@ -25,4 +25,16 @@ public interface AdminUserMapper {
      * @return 管理员用户
      */
     AdminUser selectById(@Param("id") Long id);
+
+    /**
+     * 更新管理员密码。
+     *
+     * @param id           管理员 ID
+     * @param passwordHash 新密码哈希
+     * @return 影响行数
+     */
+    int updatePassword(
+            @Param("id") Long id,
+            @Param("passwordHash") String passwordHash
+    );
 }

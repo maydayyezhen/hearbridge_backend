@@ -31,4 +31,10 @@
         limit 1
     </select>
 
+    <update id="updatePassword">
+        update admin_user
+        set password_hash = #{passwordHash}
+        where id = #{id}
+    </update>
+
 </mapper>

@@ -6,6 +6,8 @@ import com.yezhen.hearbridge.backend.dto.AdminLoginResult;
 import com.yezhen.hearbridge.backend.dto.AdminUserInfo;
 import com.yezhen.hearbridge.backend.service.AdminAuthService;
 import org.springframework.web.bind.annotation.*;
+import com.yezhen.hearbridge.backend.dto.AdminChangePasswordRequest;
+import java.util.Map;
 
 /**
  * 管理端认证 Controller。
@@ -62,5 +64,24 @@ public class AdminAuthController {
     public void logout(@RequestHeader(value = "Authorization", required = false) String authorization) {
         String token = adminAuthService.extractToken(authorization);
         adminAuthService.logout(token);
+    }
+
+    /**
+     * 修改当前管理员密码。
+     *
+     * 修改成功后当前 token 会失效，前端需要重新登录。
+     *
+     * @param request       修改密码请求
+     * @param authorization Authorization 请求头
+     * @return 修改结果
+     */
+    @PutMapping("/password")
+    public Map<String, String> changePassword(
+            @RequestBody AdminChangePasswordRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        String token = adminAuthService.extractToken(authorization);
+        adminAuthService.changePassword(request, token);
+
+        return Map.of("message", "密码修改成功，请重新登录");
     }
 }
