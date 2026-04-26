@@ -28,6 +28,14 @@ public interface SignResourceMapper {
     List<SignResource> selectByCategoryCode(@Param("categoryCode") String categoryCode);
 
     /**
+     * 根据主键 ID 查询单个资源。
+     *
+     * @param id 资源主键 ID
+     * @return 资源详情
+     */
+    SignResource selectById(@Param("id") Long id);
+
+    /**
      * 根据资源编码查询单个资源。
      *
      * @param code 资源编码
@@ -38,12 +46,32 @@ public interface SignResourceMapper {
     /**
      * 统计某个分类编码下的资源数量。
      *
-     * 用途：
-     * 1. 删除分类前判断是否仍有资源引用。
-     * 2. 修改分类编码前判断是否会造成资源孤儿数据。
-     *
      * @param categoryCode 分类编码
      * @return 资源数量
      */
     int countByCategoryCode(@Param("categoryCode") String categoryCode);
+
+    /**
+     * 新增资源。
+     *
+     * @param resource 资源信息
+     * @return 影响行数
+     */
+    int insert(SignResource resource);
+
+    /**
+     * 根据主键 ID 更新资源。
+     *
+     * @param resource 资源信息
+     * @return 影响行数
+     */
+    int updateById(SignResource resource);
+
+    /**
+     * 根据主键 ID 删除资源。
+     *
+     * @param id 资源主键 ID
+     * @return 影响行数
+     */
+    int deleteById(@Param("id") Long id);
 }

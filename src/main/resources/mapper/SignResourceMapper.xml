@@ -30,6 +30,19 @@
         order by id asc
     </select>
 
+    <select id="selectById" resultType="com.yezhen.hearbridge.backend.entity.SignResource">
+        select
+        id,
+        code,
+        name_zh as nameZh,
+        category_code as categoryCode,
+        sigml_object_key as sigmlObjectKey,
+        cover_object_key as coverObjectKey
+        from sign_resource
+        where id = #{id}
+        limit 1
+    </select>
+
     <select id="selectByCode" resultType="com.yezhen.hearbridge.backend.entity.SignResource">
         select
         id,
@@ -48,5 +61,41 @@
         from sign_resource
         where category_code = #{categoryCode}
     </select>
+
+    <insert id="insert"
+            parameterType="com.yezhen.hearbridge.backend.entity.SignResource"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        insert into sign_resource (
+        code,
+        name_zh,
+        category_code,
+        sigml_object_key,
+        cover_object_key
+        )
+        values (
+        #{code},
+        #{nameZh},
+        #{categoryCode},
+        #{sigmlObjectKey},
+        #{coverObjectKey}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.yezhen.hearbridge.backend.entity.SignResource">
+        update sign_resource
+        set
+        code = #{code},
+        name_zh = #{nameZh},
+        category_code = #{categoryCode},
+        sigml_object_key = #{sigmlObjectKey},
+        cover_object_key = #{coverObjectKey}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        delete from sign_resource
+        where id = #{id}
+    </delete>
 
 </mapper>

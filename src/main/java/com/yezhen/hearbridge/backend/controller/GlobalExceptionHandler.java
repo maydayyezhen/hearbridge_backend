@@ -9,6 +9,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
  * 全局异常处理器。
@@ -51,8 +54,6 @@ public class GlobalExceptionHandler {
             ResponseStatusException exception,
             HttpServletRequest request) {
 
-        exception.printStackTrace();
-
         int statusCode = exception.getStatusCode().value();
         String reason = exception.getReason() == null ? "请求处理失败" : exception.getReason();
 
@@ -64,6 +65,54 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(exception.getStatusCode())
                 .body(buildBody(statusCode, exception.getStatusCode().toString(), message, request.getRequestURI()));
+    }
+
+
+    /**
+     * 处理缺少请求参数 / multipart 文件 part 的异常。
+     *
+     * 例如：
+     * 1. POST /files/upload 缺少 file；
+     * 2. POST /files/upload 缺少 bizType。
+     *
+     * @param exception 参数异常
+     * @param request   当前请求
+     * @return 统一错误响应
+     */
+    @ExceptionHandler({
+            MissingServletRequestPartException.class,
+            MissingServletRequestParameterException.class
+    })
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, Object> handleMissingRequestPartOrParameter(
+            Exception exception,
+            HttpServletRequest request) {
+        return buildBody(
+                400,
+                "Bad Request",
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * 处理上传文件超过 Spring multipart 限制的异常。
+     *
+     * @param exception 文件过大异常
+     * @param request   当前请求
+     * @return 统一错误响应
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, Object> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException exception,
+            HttpServletRequest request) {
+        return buildBody(
+                400,
+                "Bad Request",
+                "上传文件大小超过限制",
+                request.getRequestURI()
+        );
     }
 
     /**
