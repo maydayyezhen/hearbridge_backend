@@ -9,6 +9,7 @@ import com.yezhen.hearbridge.backend.service.SignSampleService;
 import org.springframework.web.bind.annotation.*;
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
+import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
 
 /**
  * 手势样本管理 Controller。
@@ -95,4 +96,15 @@ public class SignSampleController {
     public FeatureConvertResult convertRawToFeatures() {
         return signSampleService.convertRawToFeatures();
     }
+
+    /**
+     * 调用 Python 服务执行模型训练。
+     *
+     * @return 模型训练结果
+     */
+    @PostMapping("/train")
+    public ModelTrainResult trainModel() {
+        return signSampleService.trainModel();
+    }
+
 }

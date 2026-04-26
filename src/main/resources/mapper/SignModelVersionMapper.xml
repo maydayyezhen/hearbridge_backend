@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.yezhen.hearbridge.backend.mapper.SignModelVersionMapper">
+
+    <sql id="BaseColumnList">
+        id,
+        version_name as versionName,
+        run_name as runName,
+        model_path as modelPath,
+        label_map_path as labelMapPath,
+        training_curve_path as trainingCurvePath,
+        confusion_matrix_path as confusionMatrixPath,
+        eval_result_path as evalResultPath,
+        sample_count as sampleCount,
+        train_sample_count as trainSampleCount,
+        val_sample_count as valSampleCount,
+        class_count as classCount,
+        input_shape as inputShape,
+        final_train_accuracy as finalTrainAccuracy,
+        final_val_accuracy as finalValAccuracy,
+        final_train_loss as finalTrainLoss,
+        final_val_loss as finalValLoss,
+        duration_sec as durationSec,
+        label_map_json as labelMapJson,
+        status,
+        published,
+        created_at as createdAt,
+        updated_at as updatedAt
+    </sql>
+
+    <select id="selectAll" resultType="com.yezhen.hearbridge.backend.entity.SignModelVersion">
+        select
+        <include refid="BaseColumnList"/>
+        from sign_model_version
+        order by id desc
+    </select>
+
+    <select id="selectById" resultType="com.yezhen.hearbridge.backend.entity.SignModelVersion">
+        select
+        <include refid="BaseColumnList"/>
+        from sign_model_version
+        where id = #{id}
+        limit 1
+    </select>
+
+    <select id="selectByRunName" resultType="com.yezhen.hearbridge.backend.entity.SignModelVersion">
+        select
+        <include refid="BaseColumnList"/>
+        from sign_model_version
+        where run_name = #{runName}
+        limit 1
+    </select>
+
+    <select id="selectPublished" resultType="com.yezhen.hearbridge.backend.entity.SignModelVersion">
+        select
+        <include refid="BaseColumnList"/>
+        from sign_model_version
+        where published = 1
+        order by id desc
+        limit 1
+    </select>
+
+    <insert id="insert"
+            parameterType="com.yezhen.hearbridge.backend.entity.SignModelVersion"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        insert into sign_model_version (
+        version_name,
+        run_name,
+        model_path,
+        label_map_path,
+        training_curve_path,
+        confusion_matrix_path,
+        eval_result_path,
+        sample_count,
+        train_sample_count,
+        val_sample_count,
+        class_count,
+        input_shape,
+        final_train_accuracy,
+        final_val_accuracy,
+        final_train_loss,
+        final_val_loss,
+        duration_sec,
+        label_map_json,
+        status,
+        published
+        )
+        values (
+        #{versionName},
+        #{runName},
+        #{modelPath},
+        #{labelMapPath},
+        #{trainingCurvePath},
+        #{confusionMatrixPath},
+        #{evalResultPath},
+        #{sampleCount},
+        #{trainSampleCount},
+        #{valSampleCount},
+        #{classCount},
+        #{inputShape},
+        #{finalTrainAccuracy},
+        #{finalValAccuracy},
+        #{finalTrainLoss},
+        #{finalValLoss},
+        #{durationSec},
+        #{labelMapJson},
+        #{status},
+        #{published}
+        )
+    </insert>
+
+    <update id="clearPublished">
+        update sign_model_version
+        set
+        published = 0,
+        status = 'TRAINED'
+        where published = 1
+    </update>
+
+    <update id="publishById">
+        update sign_model_version
+        set
+        published = 1,
+        status = 'PUBLISHED'
+        where id = #{id}
+    </update>
+
+</mapper>

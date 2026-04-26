@@ -4,6 +4,7 @@ import com.yezhen.hearbridge.backend.dto.SignSamplePageResult;
 import com.yezhen.hearbridge.backend.dto.SignSampleQualityUpdateRequest;
 import com.yezhen.hearbridge.backend.dto.SignSampleQuery;
 import com.yezhen.hearbridge.backend.dto.SignSampleSummary;
+import com.yezhen.hearbridge.backend.entity.SignModelVersion;
 import com.yezhen.hearbridge.backend.entity.SignSample;
 import com.yezhen.hearbridge.backend.mapper.SignSampleMapper;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import com.yezhen.hearbridge.backend.dto.PythonRawSampleItem;
 import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
+import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
 
 import java.util.Set;
 
@@ -63,15 +65,22 @@ public class SignSampleService {
     private final PythonGestureServiceClient pythonGestureServiceClient;
 
     /**
+     * 模型版本 Service。
+     */
+    private final SignModelVersionService signModelVersionService;
+
+    /**
      * 构造注入手势样本 Mapper。
      *
      * @param signSampleMapper 手势样本 Mapper
      */
     public SignSampleService(
             SignSampleMapper signSampleMapper,
-            PythonGestureServiceClient pythonGestureServiceClient) {
+            PythonGestureServiceClient pythonGestureServiceClient,
+            SignModelVersionService signModelVersionService) {
         this.signSampleMapper = signSampleMapper;
         this.pythonGestureServiceClient = pythonGestureServiceClient;
+        this.signModelVersionService = signModelVersionService;
     }
 
     /**
@@ -305,6 +314,30 @@ public class SignSampleService {
 
         if (result == null) {
             throw new IllegalArgumentException("raw → feature 转换失败：Python 服务未返回结果");
+        }
+
+        return result;
+    }
+
+    /**
+     * 调用 Python 服务执行模型训练，并自动登记模型版本。
+     *
+     * @return 模型训练结果
+     */
+    public ModelTrainResult trainModel() {
+        ModelTrainResult result = pythonGestureServiceClient.trainModel();
+
+        if (result == null) {
+            throw new IllegalArgumentException("模型训练失败：Python 服务未返回结果");
+        }
+
+        SignModelVersion version = signModelVersionService.createFromTrainResult(result);
+
+        if (version != null) {
+            result.setVersionId(version.getId());
+            result.setVersionName(version.getVersionName());
+            result.setVersionStatus(version.getStatus());
+            result.setPublished(version.getPublished());
         }
 
         return result;

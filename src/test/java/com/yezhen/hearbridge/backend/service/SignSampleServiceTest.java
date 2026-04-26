@@ -4,6 +4,7 @@ import com.yezhen.hearbridge.backend.dto.SignSamplePageResult;
 import com.yezhen.hearbridge.backend.dto.SignSampleQualityUpdateRequest;
 import com.yezhen.hearbridge.backend.dto.SignSampleQuery;
 import com.yezhen.hearbridge.backend.dto.SignSampleSummary;
+import com.yezhen.hearbridge.backend.entity.SignModelVersion;
 import com.yezhen.hearbridge.backend.entity.SignSample;
 import com.yezhen.hearbridge.backend.mapper.SignSampleMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import com.yezhen.hearbridge.backend.dto.PythonRawSampleItem;
 import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
+import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -48,6 +50,12 @@ class SignSampleServiceTest {
     private PythonGestureServiceClient pythonGestureServiceClient;
 
     /**
+     * 模型版本 Service Mock。
+     */
+    @Mock
+    private SignModelVersionService signModelVersionService;
+
+    /**
      * 被测试的手势样本 Service。
      */
     private SignSampleService signSampleService;
@@ -59,7 +67,8 @@ class SignSampleServiceTest {
     void setUp() {
         signSampleService = new SignSampleService(
                 signSampleMapper,
-                pythonGestureServiceClient
+                pythonGestureServiceClient,
+                signModelVersionService
         );
     }
 
@@ -491,6 +500,61 @@ class SignSampleServiceTest {
         assertEquals("raw → feature 转换失败：Python 服务未返回结果", exception.getMessage());
 
         verify(pythonGestureServiceClient).convertRawToFeatures();
+    }
+
+    /**
+     * 测试：调用 Python 服务执行模型训练成功，并登记模型版本。
+     */
+    @Test
+    void trainModel_shouldReturnResultAndCreateModelVersion_whenPythonServiceReturnsResult() {
+        ModelTrainResult result = new ModelTrainResult();
+        result.setRunName("train_20260426_153000");
+        result.setSampleCount(80);
+        result.setTrainSampleCount(64);
+        result.setValSampleCount(16);
+        result.setClassCount(10);
+        result.setEpochsRan(20);
+        result.setMessage("training completed");
+
+        SignModelVersion version = new SignModelVersion();
+        version.setId(1L);
+        version.setVersionName("train_20260426_153000");
+        version.setStatus("TRAINED");
+        version.setPublished(false);
+
+        when(pythonGestureServiceClient.trainModel()).thenReturn(result);
+        when(signModelVersionService.createFromTrainResult(result)).thenReturn(version);
+
+        ModelTrainResult actual = signSampleService.trainModel();
+
+        assertEquals("train_20260426_153000", actual.getRunName());
+        assertEquals(80, actual.getSampleCount());
+        assertEquals(10, actual.getClassCount());
+        assertEquals("training completed", actual.getMessage());
+        assertEquals(1L, actual.getVersionId());
+        assertEquals("train_20260426_153000", actual.getVersionName());
+        assertEquals("TRAINED", actual.getVersionStatus());
+        assertFalse(actual.getPublished());
+
+        verify(pythonGestureServiceClient).trainModel();
+        verify(signModelVersionService).createFromTrainResult(result);
+    }
+
+    /**
+     * 测试：Python 服务未返回训练结果时，应抛出异常。
+     */
+    @Test
+    void trainModel_shouldThrowException_whenPythonServiceReturnsNull() {
+        when(pythonGestureServiceClient.trainModel()).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> signSampleService.trainModel()
+        );
+
+        assertEquals("模型训练失败：Python 服务未返回结果", exception.getMessage());
+
+        verify(pythonGestureServiceClient).trainModel();
     }
 
 }

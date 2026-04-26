@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
+import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
 
 /**
  * 手势样本 Controller 黑盒测试。
@@ -296,6 +297,33 @@ class SignSampleControllerTest {
         Mockito.verify(signSampleService).convertRawToFeatures();
     }
 
+    /**
+     * 测试：POST /sign/samples/train 执行模型训练。
+     */
+    @Test
+    void trainModel_shouldReturnTrainResult() throws Exception {
+        ModelTrainResult result = new ModelTrainResult();
+        result.setRunName("train_20260426_153000");
+        result.setSampleCount(80);
+        result.setTrainSampleCount(64);
+        result.setValSampleCount(16);
+        result.setClassCount(10);
+        result.setEpochsRan(20);
+        result.setMessage("training completed");
 
+        Mockito.when(signSampleService.trainModel()).thenReturn(result);
+
+        mockMvc.perform(post("/sign/samples/train"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runName").value("train_20260426_153000"))
+                .andExpect(jsonPath("$.sampleCount").value(80))
+                .andExpect(jsonPath("$.trainSampleCount").value(64))
+                .andExpect(jsonPath("$.valSampleCount").value(16))
+                .andExpect(jsonPath("$.classCount").value(10))
+                .andExpect(jsonPath("$.epochsRan").value(20))
+                .andExpect(jsonPath("$.message").value("training completed"));
+
+        Mockito.verify(signSampleService).trainModel();
+    }
 
 }
