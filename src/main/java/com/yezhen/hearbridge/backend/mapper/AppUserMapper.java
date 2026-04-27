@@ -19,4 +19,7 @@ public interface AppUserMapper {
 
     int updateAvatarById(@Param("id") Long id,
                          @Param("avatarUrl") String avatarUrl);
+
+    int updatePasswordById(@Param("id") Long id,
+                           @Param("passwordHash") String passwordHash);
 }
