@@ -1,10 +1,12 @@
 package com.yezhen.hearbridge.backend.service;
 
 import com.yezhen.hearbridge.backend.config.MinioProperties;
+import com.yezhen.hearbridge.backend.dto.PageResult;
 import com.yezhen.hearbridge.backend.entity.SignCategory;
 import com.yezhen.hearbridge.backend.entity.SignResource;
 import com.yezhen.hearbridge.backend.mapper.SignCategoryMapper;
 import com.yezhen.hearbridge.backend.mapper.SignResourceMapper;
+import com.yezhen.hearbridge.backend.util.PageUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -71,6 +73,20 @@ public class SignResourceService {
         }
         resources.forEach(this::fillUrls);
         return resources;
+    }
+
+    /**
+     * 分页查询资源，支持按分类编码筛选。
+     *
+     * 当前实现先基于完整列表做内存分页，后续数据量变大后再下沉到 Mapper / SQL。
+     *
+     * @param categoryCode 分类编码
+     * @param pageNo       当前页码
+     * @param pageSize     每页数量
+     * @return 资源分页结果
+     */
+    public PageResult<SignResource> page(String categoryCode, Integer pageNo, Integer pageSize) {
+        return PageUtils.paginate(list(categoryCode), pageNo, pageSize);
     }
 
     /**
