@@ -14,6 +14,9 @@ import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
 import com.yezhen.hearbridge.backend.dto.SignSampleSyncResult;
 import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
 import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
+import com.yezhen.hearbridge.backend.dto.FileUploadResult;
+
+import java.io.ByteArrayInputStream;
 
 import java.util.Set;
 
@@ -70,6 +73,11 @@ public class SignSampleService {
     private final SignModelVersionService signModelVersionService;
 
     /**
+     * MinIO 文件存储服务。
+     */
+    private final MinioStorageService minioStorageService;
+
+    /**
      * 构造注入手势样本 Mapper。
      *
      * @param signSampleMapper 手势样本 Mapper
@@ -77,10 +85,12 @@ public class SignSampleService {
     public SignSampleService(
             SignSampleMapper signSampleMapper,
             PythonGestureServiceClient pythonGestureServiceClient,
-            SignModelVersionService signModelVersionService) {
+            SignModelVersionService signModelVersionService,
+            MinioStorageService minioStorageService) {
         this.signSampleMapper = signSampleMapper;
         this.pythonGestureServiceClient = pythonGestureServiceClient;
         this.signModelVersionService = signModelVersionService;
+        this.minioStorageService = minioStorageService;
     }
 
     /**
@@ -324,12 +334,19 @@ public class SignSampleService {
      *
      * @return 模型训练结果
      */
+    /**
+     * 调用 Python 服务执行模型训练，并自动登记模型版本。
+     *
+     * @return 模型训练结果
+     */
     public ModelTrainResult trainModel() {
         ModelTrainResult result = pythonGestureServiceClient.trainModel();
 
         if (result == null) {
             throw new IllegalArgumentException("模型训练失败：Python 服务未返回结果");
         }
+
+        uploadTrainArtifactsToMinio(result);
 
         SignModelVersion version = signModelVersionService.createFromTrainResult(result);
 
@@ -341,6 +358,99 @@ public class SignSampleService {
         }
 
         return result;
+    }
+
+    /**
+     * 将 Python 训练产物上传到 MinIO，并将训练结果中的路径字段替换为 MinIO objectKey。
+     *
+     * @param result Python 训练结果
+     */
+    private void uploadTrainArtifactsToMinio(ModelTrainResult result) {
+        if (result == null || !StringUtils.hasText(result.getRunName())) {
+            throw new IllegalArgumentException("训练结果或 runName 不能为空");
+        }
+
+        String runName = result.getRunName();
+
+        result.setModelPath(uploadTrainArtifact(
+                runName,
+                extractFileName(result.getModelPath(), "gesture_cnn_arm_pose_10fps.keras"),
+                "application/octet-stream"
+        ));
+
+        result.setLabelMapPath(uploadTrainArtifact(
+                runName,
+                extractFileName(result.getLabelMapPath(), "label_map_arm_pose_10fps.json"),
+                "application/json"
+        ));
+
+        result.setTrainingCurvePath(uploadTrainArtifact(
+                runName,
+                extractFileName(result.getTrainingCurvePath(), "training_curve.png"),
+                "image/png"
+        ));
+
+        result.setConfusionMatrixPath(uploadTrainArtifact(
+                runName,
+                extractFileName(result.getConfusionMatrixPath(), "confusion_matrix.png"),
+                "image/png"
+        ));
+
+        result.setEvalResultPath(uploadTrainArtifact(
+                runName,
+                extractFileName(result.getEvalResultPath(), "eval_result.txt"),
+                "text/plain"
+        ));
+    }
+
+    /**
+     * 下载单个 Python 训练产物并上传到 MinIO。
+     *
+     * @param runName     训练运行名称
+     * @param fileName    文件名
+     * @param contentType 文件类型
+     * @return MinIO objectKey
+     */
+    private String uploadTrainArtifact(String runName, String fileName, String contentType) {
+        byte[] bytes = pythonGestureServiceClient.downloadArtifact(runName, fileName);
+
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException("训练产物为空：" + runName + "/" + fileName);
+        }
+
+        String objectKey = "sign/model/artifacts/" + runName + "/" + fileName;
+
+        FileUploadResult uploadResult = minioStorageService.uploadObject(
+                new ByteArrayInputStream(bytes),
+                bytes.length,
+                objectKey,
+                contentType,
+                fileName
+        );
+
+        return uploadResult.getObjectKey();
+    }
+
+    /**
+     * 从路径中提取文件名。
+     *
+     * @param path         原始路径
+     * @param fallbackName 兜底文件名
+     * @return 文件名
+     */
+    private String extractFileName(String path, String fallbackName) {
+        if (!StringUtils.hasText(path)) {
+            return fallbackName;
+        }
+
+        String normalizedPath = path.replace("\\", "/");
+        int index = normalizedPath.lastIndexOf("/");
+
+        if (index < 0 || index >= normalizedPath.length() - 1) {
+            return normalizedPath;
+        }
+
+        return normalizedPath.substring(index + 1);
     }
 
 }

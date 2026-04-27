@@ -60,6 +60,41 @@ public class SignModelVersion {
     private String evalResultPath;
 
     /**
+     * 模型文件访问 URL。
+     *
+     * 非数据库字段，由后端根据 modelPath 里的 MinIO objectKey 生成。
+     */
+    private String modelUrl;
+
+    /**
+     * 标签映射文件访问 URL。
+     *
+     * 非数据库字段，由后端根据 labelMapPath 里的 MinIO objectKey 生成。
+     */
+    private String labelMapUrl;
+
+    /**
+     * 训练曲线图访问 URL。
+     *
+     * 非数据库字段，由后端根据 trainingCurvePath 里的 MinIO objectKey 生成。
+     */
+    private String trainingCurveUrl;
+
+    /**
+     * 混淆矩阵图访问 URL。
+     *
+     * 非数据库字段，由后端根据 confusionMatrixPath 里的 MinIO objectKey 生成。
+     */
+    private String confusionMatrixUrl;
+
+    /**
+     * 评估结果文本访问 URL。
+     *
+     * 非数据库字段，由后端根据 evalResultPath 里的 MinIO objectKey 生成。
+     */
+    private String evalResultUrl;
+
+    /**
      * 样本总数。
      */
     private Integer sampleCount;

@@ -116,6 +116,66 @@ public class MinioStorageService {
     }
 
     /**
+     * 上传后端内部生成或接管的普通文件对象到 MinIO。
+     *
+     * @param inputStream      输入流
+     * @param size             文件大小
+     * @param objectKey        MinIO 对象 Key
+     * @param contentType      文件类型
+     * @param originalFileName 原始文件名
+     * @return 文件上传结果
+     */
+    public FileUploadResult uploadObject(
+            InputStream inputStream,
+            long size,
+            String objectKey,
+            String contentType,
+            String originalFileName) {
+        if (inputStream == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "上传文件流不能为空");
+        }
+
+        if (!StringUtils.hasText(objectKey)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "MinIO objectKey 不能为空");
+        }
+
+        if (size <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "上传文件不能为空");
+        }
+
+        String normalizedContentType = StringUtils.hasText(contentType)
+                ? contentType
+                : "application/octet-stream";
+
+        try {
+            MinioClient client = buildClient();
+            ensureBucket(client);
+
+            client.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(minioProperties.getBucket())
+                            .object(objectKey)
+                            .contentType(normalizedContentType)
+                            .stream(inputStream, size, -1)
+                            .build()
+            );
+
+            return new FileUploadResult(
+                    minioProperties.getBucket(),
+                    objectKey,
+                    minioProperties.buildObjectUrl(objectKey),
+                    originalFileName,
+                    normalizedContentType,
+                    size
+            );
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "文件上传失败", ex);
+        }
+    }
+
+    /**
      * 上传用户头像。
      *
      * 说明：

@@ -9,6 +9,7 @@ import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
 import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
 import com.yezhen.hearbridge.backend.dto.ModelReloadRequest;
 import com.yezhen.hearbridge.backend.dto.ModelReloadResult;
+import com.yezhen.hearbridge.backend.dto.ModelReloadFromUrlRequest;
 
 /**
  * Python 手势识别服务客户端。
@@ -136,6 +137,65 @@ public class PythonGestureServiceClient {
 
         return restClient.post()
                 .uri(normalizedBaseUrl + "/model/reload")
+                .body(request)
+                .retrieve()
+                .body(ModelReloadResult.class);
+    }
+
+    /**
+     * 下载 Python 训练产物文件。
+     *
+     * @param runName  训练运行名称
+     * @param fileName 文件名
+     * @return 文件字节
+     */
+    public byte[] downloadArtifact(String runName, String fileName) {
+        String baseUrl = pythonServiceProperties.getGestureServiceBaseUrl();
+
+        if (!StringUtils.hasText(baseUrl)) {
+            throw new IllegalStateException("Python 手势识别服务地址未配置");
+        }
+
+        String normalizedBaseUrl = baseUrl.endsWith("/")
+                ? baseUrl.substring(0, baseUrl.length() - 1)
+                : baseUrl;
+
+        return restClient.get()
+                .uri(normalizedBaseUrl + "/artifacts/{runName}/{fileName}", runName, fileName)
+                .retrieve()
+                .body(byte[].class);
+    }
+
+    /**
+     * 通过 MinIO URL 重载 Python 当前模型。
+     *
+     * @param modelUrl    模型文件 URL
+     * @param labelMapUrl 标签映射文件 URL
+     * @param versionName 模型版本名称
+     * @return 重载结果
+     */
+    public ModelReloadResult reloadModelFromUrl(
+            String modelUrl,
+            String labelMapUrl,
+            String versionName) {
+        String baseUrl = pythonServiceProperties.getGestureServiceBaseUrl();
+
+        if (!StringUtils.hasText(baseUrl)) {
+            throw new IllegalStateException("Python 手势识别服务地址未配置");
+        }
+
+        String normalizedBaseUrl = baseUrl.endsWith("/")
+                ? baseUrl.substring(0, baseUrl.length() - 1)
+                : baseUrl;
+
+        ModelReloadFromUrlRequest request = new ModelReloadFromUrlRequest(
+                modelUrl,
+                labelMapUrl,
+                versionName
+        );
+
+        return restClient.post()
+                .uri(normalizedBaseUrl + "/model/reload-from-url")
                 .body(request)
                 .retrieve()
                 .body(ModelReloadResult.class);

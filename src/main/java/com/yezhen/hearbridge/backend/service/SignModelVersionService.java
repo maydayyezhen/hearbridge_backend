@@ -8,6 +8,7 @@ import com.yezhen.hearbridge.backend.mapper.SignModelVersionMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import com.yezhen.hearbridge.backend.dto.ModelReloadResult;
+import com.yezhen.hearbridge.backend.config.MinioProperties;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -50,6 +51,11 @@ public class SignModelVersionService {
     private final PythonGestureServiceClient pythonGestureServiceClient;
 
     /**
+     * MinIO 配置。
+     */
+    private final MinioProperties minioProperties;
+
+    /**
      * 构造注入依赖。
      *
      * @param signModelVersionMapper 模型版本 Mapper
@@ -58,10 +64,12 @@ public class SignModelVersionService {
     public SignModelVersionService(
             SignModelVersionMapper signModelVersionMapper,
             ObjectMapper objectMapper,
-            PythonGestureServiceClient pythonGestureServiceClient) {
+            PythonGestureServiceClient pythonGestureServiceClient,
+            MinioProperties minioProperties) {
         this.signModelVersionMapper = signModelVersionMapper;
         this.objectMapper = objectMapper;
         this.pythonGestureServiceClient = pythonGestureServiceClient;
+        this.minioProperties = minioProperties;
     }
 
     /**
@@ -70,7 +78,10 @@ public class SignModelVersionService {
      * @return 模型版本列表
      */
     public List<SignModelVersion> listAll() {
-        return signModelVersionMapper.selectAll();
+        return signModelVersionMapper.selectAll()
+                .stream()
+                .map(this::attachArtifactUrls)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -79,7 +90,7 @@ public class SignModelVersionService {
      * @return 当前发布版本；没有发布版本时返回 null
      */
     public SignModelVersion getPublished() {
-        return signModelVersionMapper.selectPublished();
+        return attachArtifactUrls(signModelVersionMapper.selectPublished());
     }
 
     /**
@@ -149,11 +160,23 @@ public class SignModelVersionService {
             throw new IllegalArgumentException("模型版本不存在，ID：" + id);
         }
 
-        ModelReloadResult reloadResult = pythonGestureServiceClient.reloadModel(
-                version.getModelPath(),
-                version.getLabelMapPath(),
-                version.getVersionName()
-        );
+        ModelReloadResult reloadResult;
+
+        if (isModelArtifactObjectKey(version.getModelPath())
+                && isModelArtifactObjectKey(version.getLabelMapPath())) {
+            reloadResult = pythonGestureServiceClient.reloadModelFromUrl(
+                    minioProperties.buildObjectUrl(version.getModelPath()),
+                    minioProperties.buildObjectUrl(version.getLabelMapPath()),
+                    version.getVersionName()
+            );
+        } else {
+            // 兼容历史版本：旧数据里可能仍然是 Python 本地路径。
+            reloadResult = pythonGestureServiceClient.reloadModel(
+                    version.getModelPath(),
+                    version.getLabelMapPath(),
+                    version.getVersionName()
+            );
+        }
 
         if (reloadResult == null || !Boolean.TRUE.equals(reloadResult.getOk())) {
             throw new IllegalArgumentException("Python 服务重载模型失败");
@@ -170,7 +193,7 @@ public class SignModelVersionService {
         published.setStatus(STATUS_PUBLISHED);
         published.setPublished(true);
 
-        return published;
+        return attachArtifactUrls(published);
     }
 
     /**
@@ -230,4 +253,51 @@ public class SignModelVersionService {
             throw new IllegalArgumentException("标签映射序列化失败：" + exception.getMessage());
         }
     }
+
+    /**
+     * 判断是否为模型训练产物 objectKey。
+     *
+     * @param value 路径或对象 Key
+     * @return 是否为 MinIO 模型训练产物 objectKey
+     */
+    private boolean isModelArtifactObjectKey(String value) {
+        return StringUtils.hasText(value)
+                && value.startsWith("sign/model/artifacts/");
+    }
+
+    /**
+     * 为模型版本附加 MinIO 访问 URL。
+     *
+     * @param version 模型版本
+     * @return 附加 URL 后的模型版本
+     */
+    private SignModelVersion attachArtifactUrls(SignModelVersion version) {
+        if (version == null) {
+            return null;
+        }
+
+        version.setModelUrl(buildUrlIfObjectKey(version.getModelPath()));
+        version.setLabelMapUrl(buildUrlIfObjectKey(version.getLabelMapPath()));
+        version.setTrainingCurveUrl(buildUrlIfObjectKey(version.getTrainingCurvePath()));
+        version.setConfusionMatrixUrl(buildUrlIfObjectKey(version.getConfusionMatrixPath()));
+        version.setEvalResultUrl(buildUrlIfObjectKey(version.getEvalResultPath()));
+
+        return version;
+    }
+
+    /**
+     * 如果字段值是 MinIO objectKey，则生成访问 URL。
+     *
+     * @param value 路径或对象 Key
+     * @return 访问 URL；不是 objectKey 时返回 null
+     */
+    private String buildUrlIfObjectKey(String value) {
+        if (!isModelArtifactObjectKey(value)) {
+            return null;
+
+        }
+
+        return minioProperties.buildObjectUrl(value);
+    }
+
 }
