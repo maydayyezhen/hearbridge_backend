@@ -334,11 +334,6 @@ public class SignSampleService {
      *
      * @return 模型训练结果
      */
-    /**
-     * 调用 Python 服务执行模型训练，并自动登记模型版本。
-     *
-     * @return 模型训练结果
-     */
     public ModelTrainResult trainModel() {
         ModelTrainResult result = pythonGestureServiceClient.trainModel();
 
@@ -381,7 +376,7 @@ public class SignSampleService {
         result.setLabelMapPath(uploadTrainArtifact(
                 runName,
                 extractFileName(result.getLabelMapPath(), "label_map_arm_pose_10fps.json"),
-                "application/json"
+                "application/json; charset=utf-8"
         ));
 
         result.setTrainingCurvePath(uploadTrainArtifact(
@@ -399,7 +394,7 @@ public class SignSampleService {
         result.setEvalResultPath(uploadTrainArtifact(
                 runName,
                 extractFileName(result.getEvalResultPath(), "eval_result.txt"),
-                "text/plain"
+                "text/plain; charset=utf-8"
         ));
     }
 
