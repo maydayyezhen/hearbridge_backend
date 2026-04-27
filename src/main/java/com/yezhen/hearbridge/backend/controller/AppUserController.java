@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/app/user")
@@ -29,6 +30,13 @@ public class AppUserController {
     public AppUserProfile updateProfile(@RequestHeader(value = "token", required = false) String token,
                                         @RequestBody AppProfileUpdateRequest request) {
         return appAuthService.updateProfile(token, request);
+    }
+
+    @PutMapping("/password")
+    public Map<String, String> changePassword(@RequestHeader(value = "token", required = false) String token,
+                                              @RequestBody Map<String, String> request) {
+        appAuthService.changePassword(token, request);
+        return Map.of("message", "密码修改成功，请重新登录");
     }
 
     @PostMapping("/avatar")
