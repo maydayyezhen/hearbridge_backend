@@ -1,5 +1,6 @@
 package com.yezhen.hearbridge.backend.controller;
 
+import com.yezhen.hearbridge.backend.dto.PageResult;
 import com.yezhen.hearbridge.backend.entity.SignResource;
 import com.yezhen.hearbridge.backend.service.SignResourceService;
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +38,22 @@ public class SignResourceController {
     public List<SignResource> listResources(
             @RequestParam(value = "categoryCode", required = false) String categoryCode) {
         return signResourceService.list(categoryCode);
+    }
+
+    /**
+     * 分页查询资源列表，支持按分类编码筛选。
+     *
+     * @param categoryCode 分类编码
+     * @param pageNo       当前页码，从 1 开始
+     * @param pageSize     每页数量
+     * @return 资源分页结果
+     */
+    @GetMapping("/page")
+    public PageResult<SignResource> pageResources(
+            @RequestParam(value = "categoryCode", required = false) String categoryCode,
+            @RequestParam(value = "pageNo", required = false) Integer pageNo,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        return signResourceService.page(categoryCode, pageNo, pageSize);
     }
 
     /**
