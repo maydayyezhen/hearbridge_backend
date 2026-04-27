@@ -13,7 +13,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  *
  * 第一版策略：
  * 1. 管理端危险操作必须登录；
- * 2. 手机端仍可读取公开分类和资源；
+ * 2. 手机端仍可读取公开分类、资源和搜索结果；
  * 3. Python 服务仍可读取当前发布模型版本。
  */
 @Component
@@ -120,6 +120,10 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         }
 
         if ("GET".equalsIgnoreCase(method) && "/sign/resources".equals(path)) {
+            return true;
+        }
+
+        if ("GET".equalsIgnoreCase(method) && "/sign/search".equals(path)) {
             return true;
         }
 
