@@ -31,11 +31,16 @@ public class SignSearchController {
     /**
      * 搜索分类和手势资源。
      *
-     * @param keyword 搜索关键词
+     * @param keyword  搜索关键词
+     * @param pageNo   当前页码，从 1 开始
+     * @param pageSize 每页数量
      * @return 统一搜索结果
      */
     @GetMapping
-    public SignSearchResult search(@RequestParam(value = "keyword", required = false) String keyword) {
-        return signSearchService.search(keyword);
+    public SignSearchResult search(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "pageNo", required = false) Integer pageNo,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        return signSearchService.search(keyword, pageNo, pageSize);
     }
 }
