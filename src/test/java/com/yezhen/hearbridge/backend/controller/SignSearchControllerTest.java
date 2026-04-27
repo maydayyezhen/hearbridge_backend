@@ -1,5 +1,6 @@
 package com.yezhen.hearbridge.backend.controller;
 
+import com.yezhen.hearbridge.backend.dto.PageResult;
 import com.yezhen.hearbridge.backend.dto.SignSearchResult;
 import com.yezhen.hearbridge.backend.entity.SignCategory;
 import com.yezhen.hearbridge.backend.entity.SignResource;
@@ -13,6 +14,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,22 +51,28 @@ class SignSearchControllerTest {
     }
 
     /**
-     * 测试：GET /sign/search 空关键词返回空结果。
+     * 测试：GET /sign/search 空关键词返回空分页结果。
      */
     @Test
     void search_shouldReturnEmptyResult_whenKeywordIsBlank() throws Exception {
-        Mockito.when(signSearchService.search(null))
-                .thenReturn(new SignSearchResult("", List.of(), List.of()));
+        Mockito.when(signSearchService.search(isNull(), isNull(), isNull()))
+                .thenReturn(new SignSearchResult(
+                        "",
+                        PageResult.of(List.of(), 0, 1, 20),
+                        PageResult.of(List.of(), 0, 1, 20)
+                ));
 
         mockMvc.perform(get("/sign/search"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.keyword").value(""))
-                .andExpect(jsonPath("$.categories.length()").value(0))
-                .andExpect(jsonPath("$.resources.length()").value(0));
+                .andExpect(jsonPath("$.categories.records.length()").value(0))
+                .andExpect(jsonPath("$.categories.total").value(0))
+                .andExpect(jsonPath("$.resources.records.length()").value(0))
+                .andExpect(jsonPath("$.resources.total").value(0));
     }
 
     /**
-     * 测试：GET /sign/search 能返回匹配分类和手势资源。
+     * 测试：GET /sign/search 能返回匹配分类和手势资源分页结果。
      */
     @Test
     void search_shouldReturnCategoriesAndResources() throws Exception {
@@ -86,21 +94,34 @@ class SignSearchControllerTest {
                 "http://127.0.0.1:9000/cwasa-static/sign/resource/hello.png"
         );
 
-        Mockito.when(signSearchService.search(eq("你")))
-                .thenReturn(new SignSearchResult("你", List.of(category), List.of(resource)));
+        Mockito.when(signSearchService.search(eq("你"), eq(1), eq(10)))
+                .thenReturn(new SignSearchResult(
+                        "你",
+                        PageResult.of(List.of(category), 1, 1, 10),
+                        PageResult.of(List.of(resource), 1, 1, 10)
+                ));
 
-        mockMvc.perform(get("/sign/search").param("keyword", "你"))
+        mockMvc.perform(get("/sign/search")
+                        .param("keyword", "你")
+                        .param("pageNo", "1")
+                        .param("pageSize", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.keyword").value("你"))
-                .andExpect(jsonPath("$.categories[0].id").value(1))
-                .andExpect(jsonPath("$.categories[0].code").value("daily"))
-                .andExpect(jsonPath("$.categories[0].nameZh").value("日常表达"))
-                .andExpect(jsonPath("$.resources[0].id").value(10))
-                .andExpect(jsonPath("$.resources[0].code").value("hello"))
-                .andExpect(jsonPath("$.resources[0].nameZh").value("你好"))
-                .andExpect(jsonPath("$.resources[0].categoryCode").value("daily"))
-                .andExpect(jsonPath("$.resources[0].sigmlUrl").value("http://127.0.0.1:9000/cwasa-static/sign/sigml/hello.sigml"))
-                .andExpect(jsonPath("$.resources[0].coverUrl").value("http://127.0.0.1:9000/cwasa-static/sign/resource/hello.png"));
+                .andExpect(jsonPath("$.categories.records[0].id").value(1))
+                .andExpect(jsonPath("$.categories.records[0].code").value("daily"))
+                .andExpect(jsonPath("$.categories.records[0].nameZh").value("日常表达"))
+                .andExpect(jsonPath("$.categories.total").value(1))
+                .andExpect(jsonPath("$.categories.pageNo").value(1))
+                .andExpect(jsonPath("$.categories.pageSize").value(10))
+                .andExpect(jsonPath("$.resources.records[0].id").value(10))
+                .andExpect(jsonPath("$.resources.records[0].code").value("hello"))
+                .andExpect(jsonPath("$.resources.records[0].nameZh").value("你好"))
+                .andExpect(jsonPath("$.resources.records[0].categoryCode").value("daily"))
+                .andExpect(jsonPath("$.resources.records[0].sigmlUrl").value("http://127.0.0.1:9000/cwasa-static/sign/sigml/hello.sigml"))
+                .andExpect(jsonPath("$.resources.records[0].coverUrl").value("http://127.0.0.1:9000/cwasa-static/sign/resource/hello.png"))
+                .andExpect(jsonPath("$.resources.total").value(1))
+                .andExpect(jsonPath("$.resources.pageNo").value(1))
+                .andExpect(jsonPath("$.resources.pageSize").value(10));
     }
 
     /**
@@ -108,7 +129,7 @@ class SignSearchControllerTest {
      */
     @Test
     void search_shouldReturnBadRequest_whenServiceThrowsIllegalArgumentException() throws Exception {
-        Mockito.when(signSearchService.search(eq("bad")))
+        Mockito.when(signSearchService.search(eq("bad"), isNull(), isNull()))
                 .thenThrow(new IllegalArgumentException("搜索参数异常"));
 
         mockMvc.perform(get("/sign/search").param("keyword", "bad"))
