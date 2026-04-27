@@ -7,15 +7,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.List;
-
 /**
  * 手语训练统一搜索结果。
  *
- * 当前 1.0 版本说明：
- * 1. categories 返回匹配的分类。
- * 2. resources 返回匹配的具体手势资源。
- * 3. 后续分页阶段可进一步拆成 PageResult 或追加 pageNo / pageSize / total。
+ * 当前分页版说明：
+ * 1. categories 返回匹配分类的分页结果。
+ * 2. resources 返回匹配手势资源的分页结果。
+ * 3. 当前分类和资源共用同一组 pageNo / pageSize 参数，后续如需更细可拆分 categoryPageNo / resourcePageNo。
  */
 @Getter
 @Setter
@@ -29,12 +27,12 @@ public class SignSearchResult {
     private String keyword;
 
     /**
-     * 匹配分类列表。
+     * 匹配分类分页结果。
      */
-    private List<SignCategory> categories;
+    private PageResult<SignCategory> categories;
 
     /**
-     * 匹配手势资源列表。
+     * 匹配手势资源分页结果。
      */
-    private List<SignResource> resources;
+    private PageResult<SignResource> resources;
 }
