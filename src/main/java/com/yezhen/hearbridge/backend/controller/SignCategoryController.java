@@ -1,5 +1,6 @@
 package com.yezhen.hearbridge.backend.controller;
 
+import com.yezhen.hearbridge.backend.dto.PageResult;
 import com.yezhen.hearbridge.backend.entity.SignCategory;
 import com.yezhen.hearbridge.backend.service.SignCategoryService;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +41,20 @@ public class SignCategoryController {
     @GetMapping
     public List<SignCategory> listCategories() {
         return signCategoryService.listAll();
+    }
+
+    /**
+     * 分页查询分类。
+     *
+     * @param pageNo   当前页码，从 1 开始
+     * @param pageSize 每页数量
+     * @return 分类分页结果
+     */
+    @GetMapping("/page")
+    public PageResult<SignCategory> pageCategories(
+            @RequestParam(value = "pageNo", required = false) Integer pageNo,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        return signCategoryService.page(pageNo, pageSize);
     }
 
     /**
