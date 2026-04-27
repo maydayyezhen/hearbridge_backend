@@ -1,9 +1,11 @@
 package com.yezhen.hearbridge.backend.service;
 
 import com.yezhen.hearbridge.backend.config.MinioProperties;
+import com.yezhen.hearbridge.backend.dto.PageResult;
 import com.yezhen.hearbridge.backend.entity.SignCategory;
 import com.yezhen.hearbridge.backend.mapper.SignCategoryMapper;
 import com.yezhen.hearbridge.backend.mapper.SignResourceMapper;
+import com.yezhen.hearbridge.backend.util.PageUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -64,6 +66,19 @@ public class SignCategoryService {
         List<SignCategory> categories = signCategoryMapper.selectAll();
         categories.forEach(this::fillUrls);
         return categories;
+    }
+
+    /**
+     * 分页查询分类。
+     *
+     * 当前实现先基于完整列表做内存分页，后续数据量变大后再下沉到 Mapper / SQL。
+     *
+     * @param pageNo   当前页码
+     * @param pageSize 每页数量
+     * @return 分类分页结果
+     */
+    public PageResult<SignCategory> page(Integer pageNo, Integer pageSize) {
+        return PageUtils.paginate(listAll(), pageNo, pageSize);
     }
 
     /**
