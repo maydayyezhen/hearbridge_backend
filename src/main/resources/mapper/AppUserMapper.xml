@@ -57,4 +57,10 @@
         where id = #{id}
     </update>
 
+    <update id="updatePasswordById">
+        update app_user
+        set password_hash = #{passwordHash}
+        where id = #{id}
+    </update>
+
 </mapper>
