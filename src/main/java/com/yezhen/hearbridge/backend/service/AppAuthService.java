@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -100,6 +101,29 @@ public class AppAuthService {
         appUserMapper.updateProfileById(user.getId(), nickname, user.getAvatarUrl());
         user.setNickname(nickname);
         return toProfile(user);
+    }
+
+    public void changePassword(String token, Map<String, String> request) {
+        String normalizedToken = normalizeToken(token);
+        AppUser user = requireUser(normalizedToken);
+        String oldPassword = trim(request == null ? null : request.get("oldPassword"));
+        String newPassword = trim(request == null ? null : request.get("newPassword"));
+        String confirmPassword = trim(request == null ? null : request.get("confirmPassword"));
+
+        validatePassword(oldPassword);
+        validatePassword(newPassword);
+        if (!newPassword.equals(confirmPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "两次输入的新密码不一致");
+        }
+        if (!encryptPassword(oldPassword).equals(user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "原密码错误");
+        }
+        if (encryptPassword(newPassword).equals(user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "新密码不能与原密码相同");
+        }
+
+        appUserMapper.updatePasswordById(user.getId(), encryptPassword(newPassword));
+        logout(normalizedToken);
     }
 
     public AppUserProfile uploadAvatar(String token,
