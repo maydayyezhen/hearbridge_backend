@@ -37,34 +37,6 @@ public final class PageUtils {
     }
 
     /**
-     * 将完整列表切成分页结果。
-     *
-     * @param source   完整列表
-     * @param pageNo   当前页码
-     * @param pageSize 每页数量
-     * @param <T>      元素类型
-     * @return 分页结果
-     */
-    public static <T> PageResult<T> paginate(List<T> source, Integer pageNo, Integer pageSize) {
-        List<T> safeSource = source == null ? Collections.emptyList() : source;
-        int safePageNo = normalizePageNo(pageNo);
-        int safePageSize = normalizePageSize(pageSize);
-        int total = safeSource.size();
-
-        if (total == 0) {
-            return PageResult.of(Collections.emptyList(), 0, safePageNo, safePageSize);
-        }
-
-        int fromIndex = (safePageNo - 1) * safePageSize;
-        if (fromIndex >= total) {
-            return PageResult.of(Collections.emptyList(), total, safePageNo, safePageSize);
-        }
-
-        int toIndex = Math.min(fromIndex + safePageSize, total);
-        return PageResult.of(safeSource.subList(fromIndex, toIndex), total, safePageNo, safePageSize);
-    }
-
-    /**
      * 规范化页码。
      *
      * @param pageNo 原始页码

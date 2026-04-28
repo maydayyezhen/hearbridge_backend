@@ -15,6 +15,42 @@
         order by id asc
     </select>
 
+    <select id="countAll" resultType="int">
+        select count(1)
+        from sign_category
+    </select>
+
+    <select id="selectPage" resultType="com.yezhen.hearbridge.backend.entity.SignCategory">
+        select
+        id,
+        code,
+        name_zh as nameZh,
+        cover_object_key as coverObjectKey
+        from sign_category
+        order by id asc
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="countByKeyword" resultType="int">
+        select count(1)
+        from sign_category
+        where code like concat('%', #{keyword}, '%')
+        or name_zh like concat('%', #{keyword}, '%')
+    </select>
+
+    <select id="searchPage" resultType="com.yezhen.hearbridge.backend.entity.SignCategory">
+        select
+        id,
+        code,
+        name_zh as nameZh,
+        cover_object_key as coverObjectKey
+        from sign_category
+        where code like concat('%', #{keyword}, '%')
+        or name_zh like concat('%', #{keyword}, '%')
+        order by id asc
+        limit #{limit} offset #{offset}
+    </select>
+
     <select id="selectById" resultType="com.yezhen.hearbridge.backend.entity.SignCategory">
         select
         id,

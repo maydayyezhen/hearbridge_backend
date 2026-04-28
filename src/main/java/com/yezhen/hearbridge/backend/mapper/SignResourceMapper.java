@@ -52,6 +52,50 @@ public interface SignResourceMapper {
     int countByCategoryCode(@Param("categoryCode") String categoryCode);
 
     /**
+     * 查询资源总数，可按分类过滤。
+     *
+     * @param categoryCode 分类编码
+     * @return 资源总数
+     */
+    int countPage(@Param("categoryCode") String categoryCode);
+
+    /**
+     * 分页查询资源，可按分类过滤。
+     *
+     * @param categoryCode 分类编码
+     * @param offset 偏移量
+     * @param limit 每页数量
+     * @return 当前页资源列表
+     */
+    List<SignResource> selectPage(
+            @Param("categoryCode") String categoryCode,
+            @Param("offset") int offset,
+            @Param("limit") int limit
+    );
+
+    /**
+     * 搜索资源总数。
+     *
+     * @param keyword 搜索关键词
+     * @return 匹配资源总数
+     */
+    int countByKeyword(@Param("keyword") String keyword);
+
+    /**
+     * 分页搜索资源。
+     *
+     * @param keyword 搜索关键词
+     * @param offset 偏移量
+     * @param limit 每页数量
+     * @return 当前页资源列表
+     */
+    List<SignResource> searchPage(
+            @Param("keyword") String keyword,
+            @Param("offset") int offset,
+            @Param("limit") int limit
+    );
+
+    /**
      * 新增资源。
      *
      * @param resource 资源信息

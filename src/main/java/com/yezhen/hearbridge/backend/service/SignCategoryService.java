@@ -71,14 +71,44 @@ public class SignCategoryService {
     /**
      * 分页查询分类。
      *
-     * 当前实现先基于完整列表做内存分页，后续数据量变大后再下沉到 Mapper / SQL。
-     *
-     * @param pageNo   当前页码
+     * @param pageNo 当前页码
      * @param pageSize 每页数量
      * @return 分类分页结果
      */
     public PageResult<SignCategory> page(Integer pageNo, Integer pageSize) {
-        return PageUtils.paginate(listAll(), pageNo, pageSize);
+        int safePageNo = PageUtils.normalizePageNo(pageNo);
+        int safePageSize = PageUtils.normalizePageSize(pageSize);
+        int offset = (safePageNo - 1) * safePageSize;
+
+        long total = signCategoryMapper.countAll();
+        List<SignCategory> records = signCategoryMapper.selectPage(offset, safePageSize);
+        records.forEach(this::fillUrls);
+
+        return PageResult.of(records, total, safePageNo, safePageSize);
+    }
+
+    /**
+     * 搜索分类总数。
+     *
+     * @param keyword 搜索关键词
+     * @return 匹配分类总数
+     */
+    public long countByKeyword(String keyword) {
+        return signCategoryMapper.countByKeyword(keyword);
+    }
+
+    /**
+     * 分页搜索分类。
+     *
+     * @param keyword 搜索关键词
+     * @param offset 偏移量
+     * @param limit 每页数量
+     * @return 当前页分类列表
+     */
+    public List<SignCategory> searchPage(String keyword, int offset, int limit) {
+        List<SignCategory> records = signCategoryMapper.searchPage(keyword, offset, limit);
+        records.forEach(this::fillUrls);
+        return records;
     }
 
     /**

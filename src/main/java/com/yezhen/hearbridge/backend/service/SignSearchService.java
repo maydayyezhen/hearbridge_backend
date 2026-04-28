@@ -49,26 +49,43 @@ public class SignSearchService {
     /**
      * 搜索分类和手势资源。
      *
-     * @param keyword  搜索关键词
-     * @param pageNo   当前页码
+     * @param keyword 搜索关键词
+     * @param pageNo 当前页码
      * @param pageSize 每页数量
      * @return 统一搜索结果
      */
     public SignSearchResult search(String keyword, Integer pageNo, Integer pageSize) {
         String normalizedKeyword = normalizeKeyword(keyword);
+        int safePageNo = PageUtils.normalizePageNo(pageNo);
+        int safePageSize = PageUtils.normalizePageSize(pageSize);
+        int offset = (safePageNo - 1) * safePageSize;
+
         if (!StringUtils.hasText(normalizedKeyword)) {
-            PageResult<SignCategory> emptyCategories = PageUtils.paginate(new ArrayList<>(), pageNo, pageSize);
-            PageResult<SignResource> emptyResources = PageUtils.paginate(new ArrayList<>(), pageNo, pageSize);
-            return new SignSearchResult("", emptyCategories, emptyResources);
+            return new SignSearchResult(
+                    "",
+                    PageResult.of(new ArrayList<>(), 0, safePageNo, safePageSize),
+                    PageResult.of(new ArrayList<>(), 0, safePageNo, safePageSize)
+            );
         }
 
-        List<SignCategory> matchedCategories = searchCategories(normalizedKeyword);
-        List<SignResource> matchedResources = searchResources(normalizedKeyword);
+        long categoryTotal = signCategoryService.countByKeyword(normalizedKeyword);
+        List<SignCategory> categories = signCategoryService.searchPage(
+                normalizedKeyword,
+                offset,
+                safePageSize
+        );
+
+        long resourceTotal = signResourceService.countByKeyword(normalizedKeyword);
+        List<SignResource> resources = signResourceService.searchPage(
+                normalizedKeyword,
+                offset,
+                safePageSize
+        );
 
         return new SignSearchResult(
                 normalizedKeyword,
-                PageUtils.paginate(matchedCategories, pageNo, pageSize),
-                PageUtils.paginate(matchedResources, pageNo, pageSize)
+                PageResult.of(categories, categoryTotal, safePageNo, safePageSize),
+                PageResult.of(resources, resourceTotal, safePageNo, safePageSize)
         );
     }
 
@@ -82,67 +99,6 @@ public class SignSearchService {
         return search(keyword, null, null);
     }
 
-    /**
-     * 搜索分类。
-     *
-     * @param keyword 已规范化关键词
-     * @return 匹配分类列表
-     */
-    private List<SignCategory> searchCategories(String keyword) {
-        List<SignCategory> result = new ArrayList<>();
-        List<SignCategory> categories = signCategoryService.listAll();
-
-        for (SignCategory category : categories) {
-            if (category == null) {
-                continue;
-            }
-
-            if (matches(keyword, category.getCode()) || matches(keyword, category.getNameZh())) {
-                result.add(category);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * 搜索手势资源。
-     *
-     * @param keyword 已规范化关键词
-     * @return 匹配手势资源列表
-     */
-    private List<SignResource> searchResources(String keyword) {
-        List<SignResource> result = new ArrayList<>();
-        List<SignResource> resources = signResourceService.list(null);
-
-        for (SignResource resource : resources) {
-            if (resource == null) {
-                continue;
-            }
-
-            if (matches(keyword, resource.getCode()) ||
-                    matches(keyword, resource.getNameZh()) ||
-                    matches(keyword, resource.getCategoryCode())) {
-                result.add(resource);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * 判断字段是否匹配关键词。
-     *
-     * @param keyword 已规范化关键词
-     * @param value   字段值
-     * @return 是否匹配
-     */
-    private boolean matches(String keyword, String value) {
-        if (!StringUtils.hasText(value)) {
-            return false;
-        }
-        return value.toLowerCase(Locale.ROOT).contains(keyword);
-    }
 
     /**
      * 规范化关键词。

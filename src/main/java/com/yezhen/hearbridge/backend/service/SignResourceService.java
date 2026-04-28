@@ -78,15 +78,51 @@ public class SignResourceService {
     /**
      * 分页查询资源，支持按分类编码筛选。
      *
-     * 当前实现先基于完整列表做内存分页，后续数据量变大后再下沉到 Mapper / SQL。
-     *
      * @param categoryCode 分类编码
-     * @param pageNo       当前页码
-     * @param pageSize     每页数量
+     * @param pageNo 当前页码
+     * @param pageSize 每页数量
      * @return 资源分页结果
      */
     public PageResult<SignResource> page(String categoryCode, Integer pageNo, Integer pageSize) {
-        return PageUtils.paginate(list(categoryCode), pageNo, pageSize);
+        int safePageNo = PageUtils.normalizePageNo(pageNo);
+        int safePageSize = PageUtils.normalizePageSize(pageSize);
+        int offset = (safePageNo - 1) * safePageSize;
+
+        String safeCategoryCode = StringUtils.hasText(categoryCode) ? categoryCode.trim() : null;
+
+        long total = signResourceMapper.countPage(safeCategoryCode);
+        List<SignResource> records = signResourceMapper.selectPage(
+                safeCategoryCode,
+                offset,
+                safePageSize
+        );
+        records.forEach(this::fillUrls);
+
+        return PageResult.of(records, total, safePageNo, safePageSize);
+    }
+
+    /**
+     * 搜索资源总数。
+     *
+     * @param keyword 搜索关键词
+     * @return 匹配资源总数
+     */
+    public long countByKeyword(String keyword) {
+        return signResourceMapper.countByKeyword(keyword);
+    }
+
+    /**
+     * 分页搜索资源。
+     *
+     * @param keyword 搜索关键词
+     * @param offset 偏移量
+     * @param limit 每页数量
+     * @return 当前页资源列表
+     */
+    public List<SignResource> searchPage(String keyword, int offset, int limit) {
+        List<SignResource> records = signResourceMapper.searchPage(keyword, offset, limit);
+        records.forEach(this::fillUrls);
+        return records;
     }
 
     /**

@@ -62,6 +62,58 @@
         where category_code = #{categoryCode}
     </select>
 
+    <select id="countPage" resultType="int">
+        select count(1)
+        from sign_resource
+        <where>
+            <if test="categoryCode != null and categoryCode != ''">
+                category_code = #{categoryCode}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultType="com.yezhen.hearbridge.backend.entity.SignResource">
+        select
+        id,
+        code,
+        name_zh as nameZh,
+        category_code as categoryCode,
+        sigml_object_key as sigmlObjectKey,
+        cover_object_key as coverObjectKey
+        from sign_resource
+        <where>
+            <if test="categoryCode != null and categoryCode != ''">
+                category_code = #{categoryCode}
+            </if>
+        </where>
+        order by id asc
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="countByKeyword" resultType="int">
+        select count(1)
+        from sign_resource
+        where code like concat('%', #{keyword}, '%')
+        or name_zh like concat('%', #{keyword}, '%')
+        or category_code like concat('%', #{keyword}, '%')
+    </select>
+
+    <select id="searchPage" resultType="com.yezhen.hearbridge.backend.entity.SignResource">
+        select
+        id,
+        code,
+        name_zh as nameZh,
+        category_code as categoryCode,
+        sigml_object_key as sigmlObjectKey,
+        cover_object_key as coverObjectKey
+        from sign_resource
+        where code like concat('%', #{keyword}, '%')
+        or name_zh like concat('%', #{keyword}, '%')
+        or category_code like concat('%', #{keyword}, '%')
+        order by id asc
+        limit #{limit} offset #{offset}
+    </select>
+
     <insert id="insert"
             parameterType="com.yezhen.hearbridge.backend.entity.SignResource"
             useGeneratedKeys="true"
