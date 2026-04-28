@@ -22,4 +22,11 @@ public interface AppUserMapper {
 
     int updatePasswordById(@Param("id") Long id,
                            @Param("passwordHash") String passwordHash);
+
+    int updateRecentPracticeById(@Param("id") Long id,
+                                 @Param("resourceId") Long resourceId,
+                                 @Param("resourceCode") String resourceCode,
+                                 @Param("chineseName") String chineseName,
+                                 @Param("sigmlUrl") String sigmlUrl,
+                                 @Param("coverUrl") String coverUrl);
 }
