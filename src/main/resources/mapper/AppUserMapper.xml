@@ -51,10 +51,10 @@
             #{nickname},
             #{avatarUrl},
             #{recentPracticeResourceId},
-            #{recentPracticeResourceCode},
-            #{recentPracticeChineseName},
-            #{recentPracticeSigmlUrl},
-            #{recentPracticeCoverUrl}
+            COALESCE(#{recentPracticeResourceCode}, ''),
+            COALESCE(#{recentPracticeChineseName}, ''),
+            COALESCE(#{recentPracticeSigmlUrl}, ''),
+            COALESCE(#{recentPracticeCoverUrl}, '')
         )
     </insert>
 
