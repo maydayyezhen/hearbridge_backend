@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 管理端认证拦截器。
@@ -23,6 +25,8 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
      * 管理端认证 Service。
      */
     private final AdminAuthService adminAuthService;
+
+    private static final Logger log = LoggerFactory.getLogger(AdminAuthInterceptor.class);
 
     /**
      * 构造注入。
@@ -47,19 +51,48 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
             HttpServletRequest request,
             HttpServletResponse response,
             Object handler) throws Exception {
-        if (isPreflight(request) || isPublicApi(request)) {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+
+        if (isPreflight(request)) {
+            log.debug("AdminAuthInterceptor preflight pass: method={}, path={}", method, path);
+            return true;
+        }
+
+        if (isPublicApi(request)) {
+            log.info("AdminAuthInterceptor public api pass: method={}, path={}", method, path);
             return true;
         }
 
         String authorization = request.getHeader("Authorization");
         String token = adminAuthService.extractToken(authorization);
 
+        log.info(
+                "AdminAuthInterceptor auth check: method={}, path={}, authorizationPresent={}, tokenLength={}",
+                method,
+                path,
+                authorization != null && !authorization.isBlank(),
+                token == null ? 0 : token.length()
+        );
+
         try {
             AdminUserInfo userInfo = adminAuthService.getUserInfoByToken(token);
             AdminAuthContext.setCurrentUser(userInfo);
+            log.info(
+                    "AdminAuthInterceptor auth passed: method={}, path={}, adminUserId={}",
+                    method,
+                    path,
+                    userInfo.getId()
+            );
             return true;
         } catch (IllegalArgumentException exception) {
-            writeUnauthorized(response, request.getRequestURI(), exception.getMessage());
+            log.warn(
+                    "AdminAuthInterceptor auth failed: method={}, path={}, reason={}",
+                    method,
+                    path,
+                    exception.getMessage()
+            );
+            writeUnauthorized(response, path, exception.getMessage());
             return false;
         }
     }
@@ -119,7 +152,15 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        if ("GET".equalsIgnoreCase(method) && "/sign/categories/page".equals(path)) {
+            return true;
+        }
+
         if ("GET".equalsIgnoreCase(method) && "/sign/resources".equals(path)) {
+            return true;
+        }
+
+        if ("GET".equalsIgnoreCase(method) && "/sign/resources/page".equals(path)) {
             return true;
         }
 
