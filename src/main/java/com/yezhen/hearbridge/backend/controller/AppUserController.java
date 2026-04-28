@@ -16,38 +16,66 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+/**
+ * 手机端用户 Controller。
+ */
 @RestController
 @RequestMapping("/app/user")
 public class AppUserController {
 
+    /**
+     * 手机端认证服务。
+     */
     private final AppAuthService appAuthService;
 
+    /**
+     * 构造注入。
+     *
+     * @param appAuthService 手机端认证服务
+     */
     public AppUserController(AppAuthService appAuthService) {
         this.appAuthService = appAuthService;
     }
 
+    /**
+     * 更新当前用户资料。
+     *
+     * @param request 更新请求
+     * @return 更新后的用户资料
+     */
     @PutMapping("/profile")
-    public AppUserProfile updateProfile(@RequestHeader(value = "token", required = false) String token,
-                                        @RequestBody AppProfileUpdateRequest request) {
-        return appAuthService.updateProfile(token, request);
+    public AppUserProfile updateProfile(@RequestBody AppProfileUpdateRequest request) {
+        return appAuthService.updateProfile(request);
     }
 
+    /**
+     * 修改当前用户密码。
+     *
+     * @param request 修改密码请求
+     * @return 提示信息
+     */
     @PutMapping("/password")
-    public Map<String, String> changePassword(@RequestHeader(value = "token", required = false) String token,
-                                              @RequestBody Map<String, String> request) {
-        appAuthService.changePassword(token, request);
+    public Map<String, String> changePassword(@RequestBody Map<String, String> request) {
+        appAuthService.changePassword(request);
         return Map.of("message", "密码修改成功，请重新登录");
     }
 
+    /**
+     * 上传当前用户头像。
+     *
+     * @param fileName 文件名
+     * @param request HTTP 请求
+     * @return 更新后的用户资料
+     * @throws IOException IO 异常
+     */
     @PostMapping("/avatar")
-    public AppUserProfile uploadAvatar(@RequestHeader(value = "token", required = false) String token,
-                                       @RequestHeader(value = "X-Filename", required = false) String fileName,
+    public AppUserProfile uploadAvatar(@RequestHeader(value = "X-Filename", required = false) String fileName,
                                        HttpServletRequest request) throws IOException {
         String decodedFileName = fileName == null || fileName.isBlank()
                 ? "avatar.jpg"
                 : URLDecoder.decode(fileName.trim(), StandardCharsets.UTF_8);
+
         return appAuthService.uploadAvatar(
-                token,
                 request.getInputStream(),
                 request.getContentLengthLong(),
                 decodedFileName,

@@ -1,10 +1,9 @@
 package com.yezhen.hearbridge.backend.config;
 
-import com.yezhen.hearbridge.backend.interceptor.AdminAuthInterceptor;
+import com.yezhen.hearbridge.backend.interceptor.AuthInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
 
 /**
  * Web MVC 配置。
@@ -13,17 +12,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     /**
-     * 管理端认证拦截器。
+     * 统一认证拦截器。
      */
-    private final AdminAuthInterceptor adminAuthInterceptor;
+    private final AuthInterceptor authInterceptor;
 
     /**
      * 构造注入。
      *
-     * @param adminAuthInterceptor 管理端认证拦截器
+     * @param authInterceptor 统一认证拦截器
      */
-    public WebMvcConfig(AdminAuthInterceptor adminAuthInterceptor) {
-        this.adminAuthInterceptor = adminAuthInterceptor;
+    public WebMvcConfig(AuthInterceptor authInterceptor) {
+        this.authInterceptor = authInterceptor;
     }
 
     /**
@@ -33,9 +32,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(adminAuthInterceptor)
+        registry.addInterceptor(authInterceptor)
                 .addPathPatterns(
                         "/admin/**",
+                        "/app/**",
                         "/sign/**",
                         "/files/**"
                 );

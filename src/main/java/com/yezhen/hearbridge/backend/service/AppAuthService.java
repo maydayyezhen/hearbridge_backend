@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
+import com.yezhen.hearbridge.backend.context.AppAuthContext;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -91,8 +92,43 @@ public class AppAuthService {
         return toProfile(requireUser(token));
     }
 
+    /**
+     * 获取当前请求中的 App 用户资料。
+     *
+     * @return 当前 App 用户资料
+     */
+    public AppUserProfile getCurrentUser() {
+        AppUser user = AppAuthContext.getCurrentUser();
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login first");
+        }
+        return toProfile(user);
+    }
+
     public AppUserProfile updateProfile(String token, AppProfileUpdateRequest request) {
         AppUser user = requireUser(token);
+        String nickname = trim(request == null ? null : request.getNickname());
+        if (!StringUtils.hasText(nickname)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nickname cannot be empty");
+        }
+
+        appUserMapper.updateProfileById(user.getId(), nickname, user.getAvatarUrl());
+        user.setNickname(nickname);
+        return toProfile(user);
+    }
+
+    /**
+     * 更新当前请求中的 App 用户资料。
+     *
+     * @param request 资料更新请求
+     * @return 更新后的用户资料
+     */
+    public AppUserProfile updateProfile(AppProfileUpdateRequest request) {
+        AppUser user = AppAuthContext.getCurrentUser();
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login first");
+        }
+
         String nickname = trim(request == null ? null : request.getNickname());
         if (!StringUtils.hasText(nickname)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nickname cannot be empty");
@@ -126,12 +162,75 @@ public class AppAuthService {
         logout(normalizedToken);
     }
 
+    /**
+     * 修改当前请求中的 App 用户密码。
+     *
+     * @param request 修改密码请求
+     */
+    public void changePassword(Map<String, String> request) {
+        AppUser user = AppAuthContext.getCurrentUser();
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login first");
+        }
+
+        String oldPassword = trim(request == null ? null : request.get("oldPassword"));
+        String newPassword = trim(request == null ? null : request.get("newPassword"));
+        String confirmPassword = trim(request == null ? null : request.get("confirmPassword"));
+
+        validatePassword(oldPassword);
+        validatePassword(newPassword);
+
+        if (!newPassword.equals(confirmPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "两次输入的新密码不一致");
+        }
+
+        if (!encryptPassword(oldPassword).equals(user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "原密码错误");
+        }
+
+        if (encryptPassword(newPassword).equals(user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "新密码不能与原密码相同");
+        }
+
+        appUserMapper.updatePasswordById(user.getId(), encryptPassword(newPassword));
+    }
+
     public AppUserProfile uploadAvatar(String token,
                                        InputStream inputStream,
                                        long size,
                                        String fileName,
                                        String contentType) {
         AppUser user = requireUser(token);
+        String objectKey = minioStorageService.uploadAvatar(
+                user.getId(),
+                inputStream,
+                size,
+                fileName,
+                contentType
+        );
+        appUserMapper.updateAvatarById(user.getId(), objectKey);
+        user.setAvatarUrl(objectKey);
+        return toProfile(user);
+    }
+
+    /**
+     * 上传当前请求中的 App 用户头像。
+     *
+     * @param inputStream 图片输入流
+     * @param size 图片大小
+     * @param fileName 文件名
+     * @param contentType 内容类型
+     * @return 更新后的用户资料
+     */
+    public AppUserProfile uploadAvatar(InputStream inputStream,
+                                       long size,
+                                       String fileName,
+                                       String contentType) {
+        AppUser user = AppAuthContext.getCurrentUser();
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login first");
+        }
+
         String objectKey = minioStorageService.uploadAvatar(
                 user.getId(),
                 inputStream,
@@ -152,7 +251,7 @@ public class AppAuthService {
         redisTemplate.delete(tokenPrefix + normalizedToken);
     }
 
-    private AppUser requireUser(String token) {
+    public AppUser requireUser(String token) {
         String normalizedToken = normalizeToken(token);
         if (!StringUtils.hasText(normalizedToken)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login first");
