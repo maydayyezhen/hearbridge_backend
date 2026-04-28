@@ -5,13 +5,22 @@
 
 <mapper namespace="com.yezhen.hearbridge.backend.mapper.AppUserMapper">
 
+    <sql id="AppUserColumns">
+        id,
+        username,
+        password_hash as passwordHash,
+        nickname,
+        avatar_url as avatarUrl,
+        recent_practice_resource_id as recentPracticeResourceId,
+        recent_practice_resource_code as recentPracticeResourceCode,
+        recent_practice_chinese_name as recentPracticeChineseName,
+        recent_practice_sigml_url as recentPracticeSigmlUrl,
+        recent_practice_cover_url as recentPracticeCoverUrl
+    </sql>
+
     <select id="selectById" resultType="com.yezhen.hearbridge.backend.entity.AppUser">
         select
-            id,
-            username,
-            password_hash as passwordHash,
-            nickname,
-            avatar_url as avatarUrl
+            <include refid="AppUserColumns"/>
         from app_user
         where id = #{id}
         limit 1
@@ -19,11 +28,7 @@
 
     <select id="selectByUsername" resultType="com.yezhen.hearbridge.backend.entity.AppUser">
         select
-            id,
-            username,
-            password_hash as passwordHash,
-            nickname,
-            avatar_url as avatarUrl
+            <include refid="AppUserColumns"/>
         from app_user
         where username = #{username}
         limit 1
@@ -34,12 +39,22 @@
             username,
             password_hash,
             nickname,
-            avatar_url
+            avatar_url,
+            recent_practice_resource_id,
+            recent_practice_resource_code,
+            recent_practice_chinese_name,
+            recent_practice_sigml_url,
+            recent_practice_cover_url
         ) values (
             #{username},
             #{passwordHash},
             #{nickname},
-            #{avatarUrl}
+            #{avatarUrl},
+            #{recentPracticeResourceId},
+            #{recentPracticeResourceCode},
+            #{recentPracticeChineseName},
+            #{recentPracticeSigmlUrl},
+            #{recentPracticeCoverUrl}
         )
     </insert>
 
@@ -60,6 +75,17 @@
     <update id="updatePasswordById">
         update app_user
         set password_hash = #{passwordHash}
+        where id = #{id}
+    </update>
+
+    <update id="updateRecentPracticeById">
+        update app_user
+        set
+            recent_practice_resource_id = #{resourceId},
+            recent_practice_resource_code = #{resourceCode},
+            recent_practice_chinese_name = #{chineseName},
+            recent_practice_sigml_url = #{sigmlUrl},
+            recent_practice_cover_url = #{coverUrl}
         where id = #{id}
     </update>
 
