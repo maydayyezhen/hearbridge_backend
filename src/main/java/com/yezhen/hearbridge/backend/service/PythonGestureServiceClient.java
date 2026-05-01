@@ -2,8 +2,14 @@ package com.yezhen.hearbridge.backend.service;
 
 import com.yezhen.hearbridge.backend.config.PythonServiceProperties;
 import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
+import com.yezhen.hearbridge.backend.dto.SentenceVideoRecognizeResult;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.client.RestClient;
 import com.yezhen.hearbridge.backend.dto.FeatureConvertResult;
 import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
@@ -61,6 +67,23 @@ public class PythonGestureServiceClient {
                 .uri(normalizedBaseUrl + "/dataset/raw/samples")
                 .retrieve()
                 .body(PythonRawSampleListResponse.class);
+    }
+
+    /**
+     * 获取规范化后的 Python 服务基础地址。
+     *
+     * @return 不以 / 结尾的 Python 服务基础地址
+     */
+    private String getNormalizedBaseUrl() {
+        String baseUrl = pythonServiceProperties.getGestureServiceBaseUrl();
+
+        if (!StringUtils.hasText(baseUrl)) {
+            throw new IllegalStateException("Python 手势识别服务地址未配置");
+        }
+
+        return baseUrl.endsWith("/")
+                ? baseUrl.substring(0, baseUrl.length() - 1)
+                : baseUrl;
     }
 
     /**
@@ -199,6 +222,36 @@ public class PythonGestureServiceClient {
                 .body(request)
                 .retrieve()
                 .body(ModelReloadResult.class);
+    }
+
+    /**
+     * 调用 Python 服务进行句子视频识别。
+     *
+     * @param file 上传的视频文件
+     * @return Python 句子视频识别结果
+     */
+    public SentenceVideoRecognizeResult recognizeSentenceVideo(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("上传视频不能为空");
+        }
+
+        String normalizedBaseUrl = getNormalizedBaseUrl();
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+        /*
+         * MultipartFile#getResource() 会保留文件名和长度信息，
+         * 适合转发给 Python FastAPI 的 multipart/form-data 接口。
+         */
+        Resource fileResource = file.getResource();
+        body.add("file", fileResource);
+
+        return restClient.post()
+                .uri(normalizedBaseUrl + "/api/sentence/recognize")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(body)
+                .retrieve()
+                .body(SentenceVideoRecognizeResult.class);
     }
 
 }
