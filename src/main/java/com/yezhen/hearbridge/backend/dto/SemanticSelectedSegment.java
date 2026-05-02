@@ -1,5 +1,6 @@
 package com.yezhen.hearbridge.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,6 +9,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SemanticSelectedSegment {
 
     private Integer segmentIndex;

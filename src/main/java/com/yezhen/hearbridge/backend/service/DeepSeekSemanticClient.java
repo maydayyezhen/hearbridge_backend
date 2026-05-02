@@ -226,6 +226,12 @@ public class DeepSeekSemanticClient {
             }
         }
 
+        int jsonStart = cleaned.indexOf('{');
+        int jsonEnd = cleaned.lastIndexOf('}');
+        if (jsonStart >= 0 && jsonEnd > jsonStart) {
+            cleaned = cleaned.substring(jsonStart, jsonEnd + 1).trim();
+        }
+
         return cleaned;
     }
 

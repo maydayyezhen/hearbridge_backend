@@ -7,6 +7,8 @@ import com.yezhen.hearbridge.backend.dto.SemanticCorrectionResult;
 import com.yezhen.hearbridge.backend.dto.SemanticRemovedSegment;
 import com.yezhen.hearbridge.backend.dto.SemanticSelectedSegment;
 import com.yezhen.hearbridge.backend.dto.SentenceSegmentResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -21,6 +23,8 @@ import java.util.Map;
  */
 @Service
 public class SignSemanticCorrectionService {
+
+    private static final Logger log = LoggerFactory.getLogger(SignSemanticCorrectionService.class);
 
     private static final String FALLBACK_REASON = "fallback to raw sequence";
 
@@ -68,6 +72,9 @@ public class SignSemanticCorrectionService {
             }
 
             List<String> correctedSequence = normalizeRequiredLabels(aiResult.getCorrectedSequence());
+            if (!rawLabels.isEmpty() && correctedSequence.isEmpty()) {
+                throw new IllegalStateException("DeepSeek 不允许删除全部词段");
+            }
             if (!isSubsequence(correctedSequence, rawLabels)) {
                 throw new IllegalStateException("DeepSeek correctedSequence 不是 rawLabel 子序列");
             }
@@ -99,6 +106,7 @@ public class SignSemanticCorrectionService {
 
             return result;
         } catch (Exception exception) {
+            log.warn("DeepSeek semantic correction fallback: {}", exception.getMessage());
             return fallback(rawSequence, rawTextZh);
         }
     }
