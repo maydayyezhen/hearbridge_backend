@@ -80,3 +80,9 @@ hearbridge:
 
   python:
     gesture-service-base-url: http://127.0.0.1:8000
+
+  deepseek:
+    base-url: https://api.deepseek.com
+    api-key: ${DEEPSEEK_API_KEY:}
+    model: deepseek-v4-flash
+    timeout-seconds: 30

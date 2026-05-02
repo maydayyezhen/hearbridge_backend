@@ -3,6 +3,7 @@ package com.yezhen.hearbridge.backend.service;
 import com.yezhen.hearbridge.backend.config.PythonServiceProperties;
 import com.yezhen.hearbridge.backend.dto.PythonRawSampleListResponse;
 import com.yezhen.hearbridge.backend.dto.SentenceVideoRecognizeResult;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,8 @@ import com.yezhen.hearbridge.backend.dto.ModelTrainResult;
 import com.yezhen.hearbridge.backend.dto.ModelReloadRequest;
 import com.yezhen.hearbridge.backend.dto.ModelReloadResult;
 import com.yezhen.hearbridge.backend.dto.ModelReloadFromUrlRequest;
+
+import java.io.IOException;
 
 /**
  * Python 手势识别服务客户端。
@@ -239,11 +242,7 @@ public class PythonGestureServiceClient {
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
-        /*
-         * MultipartFile#getResource() 会保留文件名和长度信息，
-         * 适合转发给 Python FastAPI 的 multipart/form-data 接口。
-         */
-        Resource fileResource = file.getResource();
+        Resource fileResource = toNamedResource(file);
         body.add("file", fileResource);
 
         return restClient.post()
@@ -252,6 +251,33 @@ public class PythonGestureServiceClient {
                 .body(body)
                 .retrieve()
                 .body(SentenceVideoRecognizeResult.class);
+    }
+
+    /**
+     * 将 MultipartFile 转为带原始文件名的 Resource。
+     *
+     * Python FastAPI 会根据上传文件名后缀校验视频格式，
+     * 因此这里显式保留 getOriginalFilename()。
+     *
+     * @param file Spring 接收到的上传文件
+     * @return 带文件名和长度的资源对象
+     */
+    private Resource toNamedResource(MultipartFile file) {
+        try {
+            return new ByteArrayResource(file.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return file.getOriginalFilename();
+                }
+
+                @Override
+                public long contentLength() {
+                    return file.getSize();
+                }
+            };
+        } catch (IOException exception) {
+            throw new IllegalStateException("读取上传视频失败", exception);
+        }
     }
 
 }
