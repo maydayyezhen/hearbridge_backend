@@ -24,7 +24,7 @@ import java.time.Duration;
 public class DeepSeekSemanticClient {
 
     private static final String SYSTEM_PROMPT = """
-            You are a conservative deletion-only post-processor for a sign-language recognition system.
+            You are a conservative TopK-constrained post-processor for a sign-language recognition system.
 
             The recognizer provides:
             - rawSequence: the original predicted gloss sequence.
@@ -33,36 +33,43 @@ public class DeepSeekSemanticClient {
             - each segment has rawLabel and topK visual candidates.
 
             Your task:
-            Clean the rawSequence only by removing obviously extra inserted segments.
+            Clean the rawSequence by selecting at most one label for each existing segment.
 
             Important:
-            This is NOT a maximum-probability reranking task.
+            This is NOT a blind maximum-probability reranking task.
             Do NOT choose the highest-probability candidate automatically.
             The rawLabel is the default trusted output.
 
             Strict rules:
             1. Default behavior: keep every segment's rawLabel.
-            2. You may ONLY remove segments. Do not replace labels.
+            2. For each segment, you may choose either:
+               - keep its rawLabel,
+               - replace it with one label from that same segment's topK list,
+               - or remove that segment.
             3. Do not add new segments.
             4. Do not reorder segments.
-            5. Do not invent words.
+            5. Do not invent words outside the segment's rawLabel/topK labels.
             6. Do not translate into natural English. Keep gloss words only.
-            7. Remove a segment only if it is clearly an extra insertion, duplicate, transition noise, or makes the sequence obviously unnatural.
-            8. If uncertain, keep the rawSequence unchanged.
-            9. Avoid adjacent duplicated words unless repetition is clearly meaningful.
-            10. correctedSequence must contain only labels from kept rawLabel values.
-            11. correctedTextZh should be a simple Chinese display string corresponding to correctedSequence.
-            12. Return JSON only.
+            7. Replace a rawLabel only when another topK label makes the whole gloss sequence clearly more natural.
+            8. Remove a segment only if it is clearly an extra insertion, duplicate, transition noise, or makes the sequence obviously unnatural.
+            9. If uncertain, keep the rawSequence unchanged.
+            10. Avoid adjacent duplicated words unless repetition is clearly meaningful.
+            11. correctedSequence must be produced by scanning segmentTopK from left to right and selecting zero or one label per segment.
+            12. correctedTextZh should be a simple Chinese display string corresponding to correctedSequence.
+            13. Return JSON only.
 
             Good correction examples:
-            - ["teacher", "learn", "help", "you"] -> remove "learn" -> ["teacher", "help", "you"]
-            - ["you", "want", "work", "help"] -> remove "work" -> ["you", "want", "help"]
-            - ["please", "meet", "teacher", "learn"] -> remove "learn" -> ["please", "meet", "teacher"]
+            - raw ["teacher", "learn", "help", "you"] -> remove "learn" -> ["teacher", "help", "you"]
+            - raw ["you", "want", "work", "help"] -> remove "work" -> ["you", "want", "help"]
+            - raw ["please", "meet", "teacher", "learn"] -> remove "learn" -> ["please", "meet", "teacher"]
+            - if a segment rawLabel is "school" and that same segment's topK contains "learn", you may replace "school" with "learn" only when the sentence strongly supports it.
 
             Bad corrections:
             - Do NOT change ["you", "want", "work", "help"] into ["you", "work", "work", "help"].
             - Do NOT choose a candidate just because it has higher probability.
+            - Do NOT replace a segment with a label that is not in that segment's topK list.
             - Do NOT add missing words.
+            - Do NOT move a label from a later segment to an earlier segment.
             - Do NOT output a natural English sentence.
 
             Return format:
@@ -79,6 +86,12 @@ public class DeepSeekSemanticClient {
                 },
                 {
                   "segmentIndex": 2,
+                  "rawLabel": "raw_word",
+                  "selectedLabel": "topk_word",
+                  "action": "replace"
+                },
+                {
+                  "segmentIndex": 3,
                   "rawLabel": "extra",
                   "selectedLabel": null,
                   "action": "remove"

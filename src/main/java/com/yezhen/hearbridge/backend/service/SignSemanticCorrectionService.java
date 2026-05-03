@@ -7,6 +7,7 @@ import com.yezhen.hearbridge.backend.dto.SemanticCorrectionResult;
 import com.yezhen.hearbridge.backend.dto.SemanticRemovedSegment;
 import com.yezhen.hearbridge.backend.dto.SemanticSelectedSegment;
 import com.yezhen.hearbridge.backend.dto.SentenceSegmentResult;
+import com.yezhen.hearbridge.backend.dto.SentenceSegmentTopKItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -75,8 +76,15 @@ public class SignSemanticCorrectionService {
             if (!rawLabels.isEmpty() && correctedSequence.isEmpty()) {
                 throw new IllegalStateException("DeepSeek 不允许删除全部词段");
             }
-            if (!isSubsequence(correctedSequence, rawLabels)) {
-                throw new IllegalStateException("DeepSeek correctedSequence 不是 rawLabel 子序列");
+            List<SegmentChoice> segmentChoices = alignSegmentChoices(
+                    safeRequest,
+                    rawLabels,
+                    correctedSequence
+            );
+            if (segmentChoices == null) {
+                throw new IllegalStateException(
+                        "DeepSeek correctedSequence must be selectable from ordered rawLabel/topK segments"
+                );
             }
 
             SemanticCorrectionResult result = new SemanticCorrectionResult();
@@ -85,15 +93,15 @@ public class SignSemanticCorrectionService {
             result.setCorrectedSequence(correctedSequence);
             result.setCorrectedTextZh(resolveCorrectedTextZh(
                     safeRequest,
-                    correctedSequence,
+                    segmentChoices,
                     aiResult.getCorrectedTextZh()
             ));
             result.setCorrectionApplied(!correctedSequence.equals(rawLabels));
-            result.setSelectedSegments(buildSelectedSegments(safeRequest, rawLabels, correctedSequence));
+            result.setSelectedSegments(buildSelectedSegments(safeRequest, rawLabels, segmentChoices));
             result.setRemovedSegments(buildRemovedSegments(
                     safeRequest,
                     rawLabels,
-                    correctedSequence,
+                    segmentChoices,
                     aiResult.getRemovedSegments()
             ));
             result.setReason(StringUtils.hasText(aiResult.getReason())
@@ -183,30 +191,20 @@ public class SignSemanticCorrectionService {
 
     private String resolveCorrectedTextZh(
             SemanticCorrectionRequest request,
-            List<String> correctedSequence,
+            List<SegmentChoice> segmentChoices,
             String aiCorrectedTextZh) {
         List<SentenceSegmentResult> segments = request.getSegmentTopK();
-        if (segments != null && !segments.isEmpty()) {
+        if (segments != null && !segments.isEmpty() && segmentChoices != null && !segmentChoices.isEmpty()) {
             List<String> display = new ArrayList<>();
-            int segmentCursor = 0;
 
-            for (String label : correctedSequence) {
-                while (segmentCursor < segments.size()) {
-                    SentenceSegmentResult segment = segments.get(segmentCursor);
-                    segmentCursor++;
-
-                    if (segment != null && label.equals(segment.getRawLabel())) {
-                        if (StringUtils.hasText(segment.getRawLabelZh())) {
-                            display.add(segment.getRawLabelZh().trim());
-                        } else {
-                            display.add(label);
-                        }
-                        break;
-                    }
+            for (SegmentChoice choice : segmentChoices) {
+                if (!choice.isSelected()) {
+                    continue;
                 }
+                display.add(resolveSelectedLabelZh(request, choice.getRawPosition(), choice.getSelectedLabel()));
             }
 
-            if (display.size() == correctedSequence.size()) {
+            if (!display.isEmpty()) {
                 return String.join(" ", display);
             }
         }
@@ -215,29 +213,27 @@ public class SignSemanticCorrectionService {
             return aiCorrectedTextZh.trim();
         }
 
+        List<String> correctedSequence = new ArrayList<>();
+        for (SegmentChoice choice : segmentChoices) {
+            if (choice.isSelected()) {
+                correctedSequence.add(choice.getSelectedLabel());
+            }
+        }
         return String.join(" ", correctedSequence);
     }
 
     private List<SemanticSelectedSegment> buildSelectedSegments(
             SemanticCorrectionRequest request,
             List<String> rawLabels,
-            List<String> correctedSequence) {
+            List<SegmentChoice> segmentChoices) {
         List<SemanticSelectedSegment> selectedSegments = new ArrayList<>();
-        int correctedCursor = 0;
 
-        for (int i = 0; i < rawLabels.size(); i++) {
-            String rawLabel = rawLabels.get(i);
-            boolean keep = correctedCursor < correctedSequence.size()
-                    && rawLabel.equals(correctedSequence.get(correctedCursor));
-            if (keep) {
-                correctedCursor++;
-            }
-
+        for (SegmentChoice choice : segmentChoices) {
             SemanticSelectedSegment selectedSegment = new SemanticSelectedSegment();
-            selectedSegment.setSegmentIndex(resolveSegmentIndex(request, i));
-            selectedSegment.setRawLabel(rawLabel);
-            selectedSegment.setSelectedLabel(keep ? rawLabel : null);
-            selectedSegment.setAction(keep ? "keep" : "remove");
+            selectedSegment.setSegmentIndex(resolveSegmentIndex(request, choice.getRawPosition()));
+            selectedSegment.setRawLabel(choice.getRawLabel());
+            selectedSegment.setSelectedLabel(choice.getSelectedLabel());
+            selectedSegment.setAction(choice.getAction());
             selectedSegments.add(selectedSegment);
         }
 
@@ -247,7 +243,7 @@ public class SignSemanticCorrectionService {
     private List<SemanticRemovedSegment> buildRemovedSegments(
             SemanticCorrectionRequest request,
             List<String> rawLabels,
-            List<String> correctedSequence,
+            List<SegmentChoice> segmentChoices,
             List<SemanticRemovedSegment> aiRemovedSegments) {
         Map<Integer, SemanticRemovedSegment> aiRemovedByIndex = new HashMap<>();
         if (aiRemovedSegments != null) {
@@ -259,24 +255,19 @@ public class SignSemanticCorrectionService {
         }
 
         List<SemanticRemovedSegment> removedSegments = new ArrayList<>();
-        int correctedCursor = 0;
 
-        for (int i = 0; i < rawLabels.size(); i++) {
-            String rawLabel = rawLabels.get(i);
-            boolean keep = correctedCursor < correctedSequence.size()
-                    && rawLabel.equals(correctedSequence.get(correctedCursor));
-            if (keep) {
-                correctedCursor++;
+        for (SegmentChoice choice : segmentChoices) {
+            if (choice.isSelected()) {
                 continue;
             }
 
-            Integer segmentIndex = resolveSegmentIndex(request, i);
+            Integer segmentIndex = resolveSegmentIndex(request, choice.getRawPosition());
             SemanticRemovedSegment aiRemoved = aiRemovedByIndex.get(segmentIndex);
 
             SemanticRemovedSegment removedSegment = new SemanticRemovedSegment();
             removedSegment.setSegmentIndex(segmentIndex);
-            removedSegment.setRawLabel(rawLabel);
-            removedSegment.setRawLabelZh(resolveRawLabelZh(request, i, rawLabel));
+            removedSegment.setRawLabel(choice.getRawLabel());
+            removedSegment.setRawLabelZh(resolveRawLabelZh(request, choice.getRawPosition(), choice.getRawLabel()));
             removedSegment.setReason(aiRemoved != null && StringUtils.hasText(aiRemoved.getReason())
                     ? aiRemoved.getReason().trim()
                     : "extra insertion or transition noise");
@@ -289,28 +280,74 @@ public class SignSemanticCorrectionService {
         return removedSegments;
     }
 
-    private boolean isSubsequence(List<String> correctedSequence, List<String> rawLabels) {
+    private List<SegmentChoice> alignSegmentChoices(
+            SemanticCorrectionRequest request,
+            List<String> rawLabels,
+            List<String> correctedSequence) {
         if (correctedSequence.size() > rawLabels.size()) {
+            return null;
+        }
+
+        List<SegmentChoice> choices = new ArrayList<>();
+        int correctedCursor = 0;
+
+        for (int rawPosition = 0; rawPosition < rawLabels.size(); rawPosition++) {
+            String rawLabel = rawLabels.get(rawPosition);
+            String selectedLabel = null;
+            String action = "remove";
+
+            if (correctedCursor < correctedSequence.size()) {
+                String candidate = correctedSequence.get(correctedCursor);
+                if (isAllowedForSegment(request, rawPosition, rawLabel, candidate)) {
+                    selectedLabel = candidate;
+                    action = rawLabel.equals(candidate) ? "keep" : "replace";
+                    correctedCursor++;
+                }
+            }
+
+            choices.add(new SegmentChoice(rawPosition, rawLabel, selectedLabel, action));
+        }
+
+        if (correctedCursor != correctedSequence.size()) {
+            return null;
+        }
+
+        return choices;
+    }
+
+    private boolean isAllowedForSegment(
+            SemanticCorrectionRequest request,
+            int rawPosition,
+            String rawLabel,
+            String selectedLabel) {
+        if (!StringUtils.hasText(selectedLabel)) {
             return false;
         }
 
-        int rawCursor = 0;
-        for (String correctedLabel : correctedSequence) {
-            boolean found = false;
-            while (rawCursor < rawLabels.size()) {
-                if (correctedLabel.equals(rawLabels.get(rawCursor))) {
-                    rawCursor++;
-                    found = true;
-                    break;
-                }
-                rawCursor++;
-            }
-            if (!found) {
-                return false;
+        String normalizedSelected = selectedLabel.trim();
+        if (normalizedSelected.equals(rawLabel)) {
+            return true;
+        }
+
+        List<SentenceSegmentResult> segments = request.getSegmentTopK();
+        if (segments == null || rawPosition >= segments.size()) {
+            return false;
+        }
+
+        SentenceSegmentResult segment = segments.get(rawPosition);
+        if (segment == null || segment.getTopK() == null) {
+            return false;
+        }
+
+        for (SentenceSegmentTopKItem item : segment.getTopK()) {
+            if (item != null
+                    && StringUtils.hasText(item.getLabel())
+                    && normalizedSelected.equals(item.getLabel().trim())) {
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 
     private List<String> normalizeOptionalLabels(List<String> labels) {
@@ -363,5 +400,67 @@ public class SignSemanticCorrectionService {
         }
 
         return rawLabel;
+    }
+
+    private String resolveSelectedLabelZh(
+            SemanticCorrectionRequest request,
+            int rawPosition,
+            String selectedLabel) {
+        List<SentenceSegmentResult> segments = request.getSegmentTopK();
+        if (segments != null && rawPosition < segments.size()) {
+            SentenceSegmentResult segment = segments.get(rawPosition);
+            if (segment != null) {
+                if (selectedLabel.equals(segment.getRawLabel())
+                        && StringUtils.hasText(segment.getRawLabelZh())) {
+                    return segment.getRawLabelZh().trim();
+                }
+                if (segment.getTopK() != null) {
+                    for (SentenceSegmentTopKItem item : segment.getTopK()) {
+                        if (item != null
+                                && StringUtils.hasText(item.getLabel())
+                                && selectedLabel.equals(item.getLabel().trim())
+                                && StringUtils.hasText(item.getLabelZh())) {
+                            return item.getLabelZh().trim();
+                        }
+                    }
+                }
+            }
+        }
+
+        return selectedLabel;
+    }
+
+    private static class SegmentChoice {
+        private final int rawPosition;
+        private final String rawLabel;
+        private final String selectedLabel;
+        private final String action;
+
+        SegmentChoice(int rawPosition, String rawLabel, String selectedLabel, String action) {
+            this.rawPosition = rawPosition;
+            this.rawLabel = rawLabel;
+            this.selectedLabel = selectedLabel;
+            this.action = action;
+        }
+
+        int getRawPosition() {
+            return rawPosition;
+        }
+
+        String getRawLabel() {
+            return rawLabel;
+        }
+
+        String getSelectedLabel() {
+            return selectedLabel;
+        }
+
+        String getAction() {
+            return action;
+        }
+
+        boolean isSelected() {
+            return selectedLabel != null;
+        }
     }
 }
