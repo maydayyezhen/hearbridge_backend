@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 手语句子识别 AI 语义修正 Controller。
+ * 手语句子识别 AI 候选排序与忠实自然化 Controller。
  */
 @RestController
 @RequestMapping("/app/sign-video")
@@ -22,10 +22,10 @@ public class SignSemanticCorrectionController {
     }
 
     /**
-     * 对句子视频原始识别结果进行 AI 语义修正。
+     * 对句子视频原始识别结果进行 AI 候选排序与忠实自然化。
      *
      * @param request 原始识别结果
-     * @return AI 语义修正结果
+     * @return AI 候选排序与忠实自然化结果
      */
     @PostMapping("/semantic-correct")
     public SemanticCorrectionResult semanticCorrect(@RequestBody SemanticCorrectionRequest request) {
